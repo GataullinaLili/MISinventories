@@ -1,0 +1,60 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/0test
+    username: postgres
+    password: admin
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  thymeleaf:
+    cache: false
+  web:
+    resources:
+      static-locations: classpath:/static/
+      cache:
+        period: 0
+  cache:
+    type: caffeine
+    cache-names:
+      - storages
+      - freeCells
+      - cellsByStorage
+      - patients
+      - dictionaryItems
+      - inventories
+      - activeInventories
+      - notIssuedInventories
+      - activeForDischarged
+    caffeine:
+      spec: maximumSize=100,expireAfterWrite=300s
+
+qr:
+  width: 200
+  height: 200
+
+app:
+  upload:
+    dir: uploads/photos
+
+mis:
+  api:
+    url: http://localhost:8081/mis/api
+
+logging:
+  level:
+    com.itemstorage: DEBUG
+    org.springframework.web: INFO
+    org.springframework.cache: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

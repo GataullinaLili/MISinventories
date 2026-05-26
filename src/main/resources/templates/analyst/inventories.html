@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Просмотр описей — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .inventory-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .inventory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .inventory-header:hover { background: #f0f2f5; }
+        .inventory-id { font-size: 16px; font-weight: 700; color: #287aa3; }
+        .inventory-body { padding: 20px; display: none; }
+        .inventory-body.active { display: block; }
+        .info-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .info-item { background: #f8f9fa; padding: 10px 12px; border-radius: 8px; }
+        .info-label { font-size: 11px; color: #6c757d; text-transform: uppercase; margin-bottom: 3px; }
+        .info-value { font-size: 14px; font-weight: 600; color: #212529; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .items-table th { background: #287aa3; color: white; padding: 8px 12px; text-align: left; font-size: 12px; }
+        .items-table td { padding: 8px 12px; border-bottom: 1px solid #e9ecef; font-size: 13px; }
+        .status-badge {
+            display: inline-block; padding: 4px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 600;
+        }
+        .status-created { background: #fff3e0; color: #e65100; }
+        .status-placed { background: #e8f5e9; color: #2e7d32; }
+        .status-moved { background: #e3f2fd; color: #287aa3; }
+        .status-issued { background: #fce4ec; color: #c62828; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .search-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 300px; flex-wrap: wrap; }
+        .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+        .search-input-wrapper input {
+            width: 100%; padding: 10px 12px;
+            border: 2px solid #ddd; border-radius: 8px; font-size: 14px;
+        }
+        .search-input-wrapper input:focus { outline: none; border-color: #287aa3; }
+        .filter-toggle { display: flex; align-items: center; gap: 8px; }
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 22px; }
+        .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: #287aa3; }
+        input:checked + .toggle-slider:before { transform: translateX(22px); }
+        .item-photo { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; }
+        .no-results { text-align: center; padding: 60px; color: #888; }
+        .print-view-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .print-view-btn:hover { background: #5a6268; }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+    <div class="content">
+        <div class="top-bar">
+            <h1 class="page-title" style="margin:0;font-size:22px;">📋 Просмотр описей</h1>
+            <div class="filter-toggle">
+                <span>Активные</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="showAllToggle" onchange="toggleShowAll()">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span>Все</span>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <div class="search-row">
+                <div class="search-input-wrapper">
+                    <input type="text" id="search-input" placeholder="Поиск по № описи, ФИО пациента или номеру истории..." autocomplete="off">
+                </div>
+                <button type="button" onclick="searchInventories()" class="btn btn-primary">🔍 Найти</button>
+                <button type="button" onclick="clearSearch()" class="btn btn-outline" id="clear-btn" style="display:none;">✕ Очистить</button>
+            </div>
+        </div>
+
+        <div th:if="${error}" style="background:#fce4ec;padding:12px;border-radius:8px;margin-bottom:15px;color:#c62828;" th:text="${error}"></div>
+
+        <div id="inventories-container">
+            <div th:each="inv : ${inventories}" class="inventory-card"
+                 th:attr="data-id=${inv.id},data-date=${inv.createdAt},data-card=${inv.patient.medicalCardNumber},data-status=${inv.status.name()}">
+
+                <div class="inventory-header" onclick="toggleCard(this)">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span class="inventory-id">Опись №<span th:text="${inv.id}">1</span></span>
+                        <span class="status-badge"
+                              th:classappend="${inv.status.name() == 'CREATED' ? 'status-created' : (inv.status.name() == 'MOVED' ? 'status-moved' : (inv.status.name() == 'PLACED' ? 'status-placed' : 'status-issued'))}"
+                              th:text="${inv.status.displayName}">Создана</span>
+                        <span th:if="${inv.patient.isDischarged}" style="background:#fff5f5;color:#c62828;padding:2px 8px;border-radius:10px;font-size:11px;">⚠ ВЫПИСАН</span>
+                        <span style="font-size:13px;color:#555;" th:text="${inv.patient.fullName}"></span>
+                    </div>
+                    <span style="font-size:18px;transition:transform 0.3s;" class="arrow">▼</span>
+                </div>
+
+                <div class="inventory-body">
+                    <div th:if="${inv.patient.isDischarged}" style="background:#fff5f5;padding:10px;border-radius:8px;margin-bottom:12px;color:#c62828;font-size:13px;border-left:4px solid #c62828;">
+                        ⚠ Пациент выписан. Опись не выдана.
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-item"><div class="info-label">Пациент</div><div class="info-value" th:text="${inv.patient.fullName}">—</div></div>
+                        <div class="info-item"><div class="info-label">Номер истории</div><div class="info-value" th:text="${inv.patient.medicalCardNumber}">—</div></div>
+                        <div class="info-item"><div class="info-label">Склад</div><div class="info-value" th:text="${inv.storage?.name ?: 'Не размещено'}">—</div></div>
+                        <div class="info-item"><div class="info-label">Ячейка</div><div class="info-value" th:text="${inv.cell?.name ?: '—'}">—</div></div>
+                        <div class="info-item"><div class="info-label">Создал</div><div class="info-value" th:text="${inv.createdBy.fullName}">—</div></div>
+                        <div class="info-item"><div class="info-label">Дата создания</div><div class="info-value" th:text="${#temporals.format(inv.createdAt, 'dd.MM.yyyy HH:mm')}">—</div></div>
+                        <div th:if="${inv.issuedAt != null}" class="info-item"><div class="info-label">Дата выдачи</div><div class="info-value" th:text="${#temporals.format(inv.issuedAt, 'dd.MM.yyyy HH:mm')}">—</div></div>
+                        <div th:if="${inv.issuedBy != null}" class="info-item"><div class="info-label">Выдал</div><div class="info-value" th:text="${inv.issuedBy}">—</div></div>
+                    </div>
+
+                    <h4 style="margin-bottom:8px;font-size:15px;">Перечень вещей:</h4>
+                    <table class="items-table">
+                        <thead>
+                        <tr>
+                            <th>Наименование</th>
+                            <th>Кол-во</th>
+                            <th>Описание</th>
+                            <th style="width:80px;">Фото</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="item : ${inv.items}">
+                            <td><strong th:text="${item.name}">—</strong></td>
+                            <td th:text="${item.quantity}">1</td>
+                            <td th:text="${item.description ?: '—'}">—</td>
+                            <td style="text-align:center;">
+                                <div th:if="${item.photoPath != null}">
+                                    <img th:src="@{'/photos/' + ${item.photoPath}}"
+                                         class="item-photo"
+                                         th:attr="onclick=|window.open('/photos/${item.photoPath}', '_blank')|"
+                                         alt="Фото">
+                                </div>
+                                <span th:unless="${item.photoPath != null}" style="color:#ccc;">—</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:unless="${inventories != null && !inventories.isEmpty()}" class="no-results">
+            <p style="font-size:48px;">📋</p>
+            <p>Нет описей</p>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script>
+    var currentShowAll = false;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadInventories();
+    });
+
+    function toggleCard(header) {
+        var body = header.nextElementSibling;
+        var arrow = header.querySelector('.arrow');
+        if (body && arrow) {
+            body.classList.toggle('active');
+            arrow.style.transform = body.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+    }
+
+    function toggleShowAll() {
+        currentShowAll = document.getElementById('showAllToggle').checked;
+        loadInventories();
+    }
+
+    function loadInventories() {
+        var container = document.getElementById('inventories-container');
+        container.innerHTML = '<div class="no-results"><p>⏳ Загрузка...</p></div>';
+
+        var url = currentShowAll ? '/api/inventory/all' : '/api/inventory/all';
+        fetch(url)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data && data.length > 0) {
+                    renderInventories(data);
+                } else {
+                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">📋</p><p>Нет описей</p></div>';
+                }
+            })
+            .catch(function(err) {
+                console.error('Ошибка загрузки:', err);
+                container.innerHTML = '<div class="no-results"><p>Ошибка загрузки данных</p></div>';
+            });
+    }
+
+    function searchInventories() {
+        var query = document.getElementById('search-input').value.trim();
+        var clearBtn = document.getElementById('clear-btn');
+
+        if (!query) {
+            loadInventories();
+            clearBtn.style.display = 'none';
+            return;
+        }
+
+        clearBtn.style.display = 'inline-block';
+
+        var container = document.getElementById('inventories-container');
+        container.innerHTML = '<div class="no-results"><p>⏳ Поиск...</p></div>';
+
+        fetch('/api/inventory/search?query=' + encodeURIComponent(query))
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data && data.length > 0) {
+                    renderInventories(data);
+                } else {
+                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>Ничего не найдено</p></div>';
+                }
+            })
+            .catch(function(err) {
+                console.error('Ошибка поиска:', err);
+                container.innerHTML = '<div class="no-results"><p>Ошибка поиска</p></div>';
+            });
+    }
+
+    function clearSearch() {
+        document.getElementById('search-input').value = '';
+        document.getElementById('clear-btn').style.display = 'none';
+        loadInventories();
+    }
+
+    function renderInventories(inventories) {
+        var container = document.getElementById('inventories-container');
+        var html = '';
+
+        for (var i = 0; i < inventories.length; i++) {
+            var inv = inventories[i];
+            var statusClass = '';
+            var statusDisplay = '';
+
+            switch(inv.status) {
+                case 'CREATED': statusClass = 'status-created'; statusDisplay = 'Создана'; break;
+                case 'PLACED': statusClass = 'status-placed'; statusDisplay = 'Размещена'; break;
+                case 'MOVED': statusClass = 'status-moved'; statusDisplay = 'Перемещена'; break;
+                case 'ISSUED': statusClass = 'status-issued'; statusDisplay = 'Выдана'; break;
+                default: statusClass = ''; statusDisplay = inv.status;
+            }
+
+            var patientName = inv.patient ? escapeHtml(inv.patient.fullName) : '—';
+            var medicalCard = inv.patient ? escapeHtml(inv.patient.medicalCardNumber) : '—';
+            var storageName = inv.storage ? escapeHtml(inv.storage.name) : 'Не размещено';
+            var cellName = inv.cell ? escapeHtml(inv.cell.name) : '—';
+            var createdBy = inv.createdBy ? escapeHtml(inv.createdBy.fullName) : '—';
+            var createdAt = inv.createdAt ? new Date(inv.createdAt).toLocaleString('ru') : '—';
+            var issuedAt = inv.issuedAt ? new Date(inv.issuedAt).toLocaleString('ru') : null;
+            var issuedBy = inv.issuedBy ? escapeHtml(inv.issuedBy) : null;
+            var isDischarged = inv.patient && inv.patient.isDischarged;
+
+            html += '<div class="inventory-card">' +
+                '<div class="inventory-header" onclick="toggleCard(this)">' +
+                '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+                '<span class="inventory-id">Опись №' + inv.id + '</span>' +
+                '<span class="status-badge ' + statusClass + '">' + statusDisplay + '</span>';
+
+            if (isDischarged) {
+                html += '<span style="background:#fff5f5;color:#c62828;padding:2px 8px;border-radius:10px;font-size:11px;">⚠ ВЫПИСАН</span>';
+            }
+
+            html += '<span style="font-size:13px;color:#555;">' + patientName + '</span>' +
+                '</div>' +
+                '<span style="font-size:18px;transition:transform 0.3s;" class="arrow">▼</span>' +
+                '</div>' +
+                '<div class="inventory-body">';
+
+            if (isDischarged) {
+                html += '<div style="background:#fff5f5;padding:10px;border-radius:8px;margin-bottom:12px;color:#c62828;font-size:13px;border-left:4px solid #c62828;">' +
+                    '⚠ Пациент выписан. Опись не выдана.</div>';
+            }
+
+            html += '<div class="info-row">' +
+                '<div class="info-item"><div class="info-label">Пациент</div><div class="info-value">' + patientName + '</div></div>' +
+                '<div class="info-item"><div class="info-label">Номер истории</div><div class="info-value">' + medicalCard + '</div></div>' +
+                '<div class="info-item"><div class="info-label">Склад</div><div class="info-value">' + storageName + '</div></div>' +
+                '<div class="info-item"><div class="info-label">Ячейка</div><div class="info-value">' + cellName + '</div></div>' +
+                '<div class="info-item"><div class="info-label">Создал</div><div class="info-value">' + createdBy + '</div></div>' +
+                '<div class="info-item"><div class="info-label">Дата создания</div><div class="info-value">' + createdAt + '</div></div>';
+
+            if (issuedAt) {
+                html += '<div class="info-item"><div class="info-label">Дата выдачи</div><div class="info-value">' + issuedAt + '</div></div>' +
+                    '<div class="info-item"><div class="info-label">Выдал</div><div class="info-value">' + issuedBy + '</div></div>';
+            }
+
+            html += '</div>' +
+                '<h4 style="margin-bottom:8px;font-size:15px;">Перечень вещей:</h4>' +
+                '<table class="items-table"><thead><tr><th>Наименование</th><th>Кол-во</th><th>Описание</th><th>Фото</th></tr></thead><tbody>';
+
+            var items = inv.items || [];
+            for (var j = 0; j < items.length; j++) {
+                var item = items[j];
+                html += '<tr>' +
+                    '<td><strong>' + escapeHtml(item.name) + '</strong></td>' +
+                    '<td>' + (item.quantity || 1) + '</td>' +
+                    '<td>' + (item.description ? escapeHtml(item.description) : '—') + '</td>' +
+                    '<td style="text-align:center;">';
+
+                if (item.photoPath) {
+                    html += '<img src="/photos/' + encodeURIComponent(item.photoPath) + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="window.open(\'/photos/' + encodeURIComponent(item.photoPath) + '\', \'_blank\')" alt="Фото">';
+                } else {
+                    html += '<span style="color:#ccc;">—</span>';
+                }
+                html += '</td></tr>';
+            }
+
+            html += '</tbody></table>' +
+                '</div></div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') searchInventories();
+    });
+</script>
+</body>
+</html>

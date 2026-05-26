@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание описи — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .item-row {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .remove-item {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 28px;
+            text-align: center;
+            padding: 0;
+        }
+        .remove-item:hover { background: #c0392b; }
+        .photo-upload-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .photo-preview-box {
+            width: 100px;
+            height: 100px;
+            border: 2px dashed #dce8f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            background: #fafafa;
+            flex-shrink: 0;
+        }
+        .photo-preview-box:hover { border-color: #287aa3; }
+        .photo-preview-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-preview-box .no-photo { font-size: 32px; color: #ccc; }
+        .photo-info { font-size: 12px; color: #888; }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+    <div class="content">
+        <h1 class="page-title">Создание описи вещей</h1>
+
+        <div th:if="${success}" style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px;" th:text="${success}"></div>
+        <div th:if="${error}" style="background: #fce4ec; padding: 15px; border-radius: 8px; margin-bottom: 20px;" th:text="${error}"></div>
+
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Новая опись</h3></div>
+
+            <form id="inventory-form" th:action="@{/receptionist/create}" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Номер истории болезни *</label>
+                    <input type="text" name="medicalCardNumber" id="medical-card-number" class="form-control" required
+                           th:value="${param.medicalCardNumber}" placeholder="Введите номер истории болезни" autocomplete="off">
+                </div>
+
+                <div id="items-container"></div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                    <button type="button" onclick="addItem()" class="btn btn-outline">+ Добавить вещь</button>
+                    <button type="submit" class="btn btn-success">💾 Сохранить опись</button>
+                </div>
+
+                <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <strong>⚠ После сохранения редактирование описи будет недоступно.</strong>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">📝 Часто используемые вещи</h3></div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Куртка зимняя')">Куртка зимняя</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Пальто')">Пальто</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Сапоги')">Сапоги</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Шапка')">Шапка</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Телефон')">Телефон</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Паспорт')">Паспорт</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Кошелёк')">Кошелёк</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Часы')">Часы</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Очки')">Очки</span>
+                <span style="background: #e3f2fd; padding: 8px 15px; border-radius: 20px; cursor: pointer;" onclick="quickAddItem('Зарядное устройство')">Зарядное устройство</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script>
+    var itemCounter = 0;
+
+    window.addEventListener('DOMContentLoaded', function() {
+        addItem();
+    });
+
+    function addItem(name, quantity, description) {
+        var idx = itemCounter;
+        itemCounter++;
+
+        var container = document.getElementById('items-container');
+        var div = document.createElement('div');
+        div.className = 'item-row';
+        div.id = 'item-row-' + idx;
+        div.innerHTML =
+            '<button type="button" class="remove-item" onclick="removeItem(' + idx + ')" title="Удалить вещь">✕</button>' +
+            '<div class="form-group">' +
+            '<label>Название вещи *</label>' +
+            '<input type="text" name="items[' + idx + '].name" class="form-control item-name" required ' +
+            'value="' + (name || '') + '" placeholder="Например: Куртка зимняя">' +
+            '</div>' +
+            '<div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">' +
+            '<div class="form-group">' +
+            '<label>Количество</label>' +
+            '<input type="number" name="items[' + idx + '].quantity" class="form-control" ' +
+            'value="' + (quantity || '1') + '" min="1" max="100">' +
+            '</div>' +
+            '<div class="form-group">' +
+            '<label>Описание</label>' +
+            '<input type="text" name="items[' + idx + '].description" class="form-control" ' +
+            'value="' + (description || '') + '" placeholder="Цвет, размер, особые приметы">' +
+            '</div>' +
+            '</div>' +
+            '<div class="photo-upload-row">' +
+            '<label style="font-size:13px;color:#555;font-weight:500;">Фото:</label>' +
+            '<div class="photo-preview-box" id="photo-box-' + idx + '" onclick="document.getElementById(\'photo-file-' + idx + '\').click()" title="Добавить фото">' +
+            '<span class="no-photo">📷</span>' +
+            '</div>' +
+            '<input type="file" id="photo-file-' + idx + '" name="itemPhotos" accept="image/*" ' +
+            'style="display:none;" onchange="previewPhoto(' + idx + ', this)">' +
+            '<span class="photo-info">JPG/PNG, до 5 МБ</span>' +
+            '</div>';
+
+        container.appendChild(div);
+    }
+
+    function removeItem(idx) {
+        var row = document.getElementById('item-row-' + idx);
+        if (row) row.remove();
+        var remaining = document.querySelectorAll('#items-container .item-row');
+        if (remaining.length === 0) addItem();
+    }
+
+    function quickAddItem(name) {
+        addItem(name);
+        var rows = document.querySelectorAll('#items-container .item-row');
+        var lastRow = rows[rows.length - 1];
+        if (lastRow) lastRow.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function previewPhoto(idx, input) {
+        var file = input.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { alert('Файл больше 5 МБ'); input.value = ''; return; }
+        if (!file.type.startsWith('image/')) { alert('Только JPG или PNG'); input.value = ''; return; }
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('photo-box-' + idx).innerHTML = '<img src="' + e.target.result + '" alt="Фото">';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    document.getElementById('inventory-form').addEventListener('submit', function(e) {
+        var names = document.querySelectorAll('.item-name');
+        var hasItems = false;
+        names.forEach(function(input) { if (input.value.trim() !== '') hasItems = true; });
+        if (!hasItems) { e.preventDefault(); alert('Добавьте хотя бы одну вещь!'); return false; }
+        return true;
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Опись вещей № <span th:text="${inventory.id}"></span></title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .info { margin-bottom: 20px; }
+        .info p { margin: 4px 0; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 13px; }
+        th { background: #f0f0f0; }
+        .qr { text-align: center; margin: 20px 0; }
+        .qr img { border: 1px solid #ccc; padding: 10px; }
+        .qr p { font-size: 12px; color: #666; margin-top: 8px; }
+        .signatures { display: flex; justify-content: space-between; margin-top: 40px; }
+        .signature-line { border-top: 1px solid #000; width: 200px; margin-top: 30px; font-size: 13px; }
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h2>Опись личных вещей пациента</h2>
+    <h3>Номер описи: <span th:text="${inventory.id}">—</span></h3>
+</div>
+
+<div class="info">
+    <p><strong>Пациент:</strong> <span th:text="${inventory.patient.fullName}">—</span></p>
+    <p><strong>Номер истории:</strong> <span th:text="${inventory.patient.medicalCardNumber}">—</span></p>
+    <p><strong>Дата создания:</strong> <span th:text="${#temporals.format(inventory.createdAt, 'dd.MM.yyyy HH:mm')}">—</span></p>
+    <p><strong>Статус:</strong> <span th:text="${inventory.status.displayName}">—</span></p>
+    <p th:if="${inventory.storage != null}"><strong>Склад:</strong> <span th:text="${inventory.storage.name}">—</span></p>
+    <p th:if="${inventory.cell != null}"><strong>Ячейка:</strong> <span th:text="${inventory.cell.name}">—</span></p>
+    <p><strong>Создал:</strong> <span th:text="${inventory.createdBy.fullName}">—</span></p>
+</div>
+
+<table>
+    <thead>
+    <tr><th>Наименование</th><th>Кол-во</th><th>Описание</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="item : ${inventory.items}">
+        <td th:text="${item.name}">—</td>
+        <td th:text="${item.quantity}">1</td>
+        <td th:text="${item.description}">—</td>
+    </tr>
+    </tbody>
+</table>
+
+<div class="qr">
+    <img id="qr-image" src="" alt="QR-код описи" style="width:150px;height:150px;"/>
+    <p>QR-код описи</p>
+</div>
+
+<div class="signatures">
+    <div>
+        <p>Вещи сдал:</p>
+        <div class="signature-line"></div>
+        <p th:text="${inventory.patient.fullName}">—</p>
+    </div>
+    <div>
+        <p>Вещи принял:</p>
+        <div class="signature-line"></div>
+        <p th:text="${inventory.createdBy.fullName}">—</p>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    // Номер описи - только чистое число
+    var inventoryId = /*[[${inventory.id}]]*/ null;
+    var qrCodeData = /*[[${qrCode}]]*/ null;
+
+    // Если QR код передан с сервера - используем его
+    if (qrCodeData && qrCodeData !== '') {
+        document.getElementById('qr-image').src = qrCodeData;
+    }
+    // Иначе генерируем через API
+    else if (inventoryId) {
+        // ИЗМЕНЕНО: правильный URL API (было /api/qrcode/generate, стало /api/qrcode)
+        var cleanId = inventoryId.toString().replace(/[^0-9]/g, '');
+        var apiUrl = '/api/qrcode?data=' + encodeURIComponent(cleanId);
+
+        fetch(apiUrl)
+            .then(function(response) { return response.text(); })
+            .then(function(dataUrl) {
+                var img = document.getElementById('qr-image');
+                if (img) {
+                    img.src = dataUrl;
+                }
+            })
+            .catch(function(error) {
+                console.error('Ошибка генерации QR:', error);
+                var img = document.getElementById('qr-image');
+                if (img) {
+                    img.alt = 'QR код: ' + cleanId;
+                    img.style.display = 'none';
+                    var container = document.querySelector('.qr');
+                    if (container) {
+                        var text = document.createElement('div');
+                        text.innerHTML = '<div style="padding:10px;">Номер описи: <strong>' + cleanId + '</strong></div>';
+                        container.appendChild(text);
+                    }
+                }
+            });
+    }
+
+    // Автоматическая печать при загрузке
+    window.onload = function() {
+        setTimeout(function() {
+            window.print();
+        }, 500);
+    }
+    /*]]>*/
+</script>
+</body>
+</html>

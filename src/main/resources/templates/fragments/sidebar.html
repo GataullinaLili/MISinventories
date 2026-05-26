@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<div th:fragment="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <h2>АРМ.Вещи</h2>
+    </div>
+    <nav>
+        <!-- ==================== ОБЩИЕ ДЛЯ ВСЕХ КРОМЕ АНАЛИТИКА ==================== -->
+
+        <div sec:authorize="!hasRole('ANALYST')">
+            <a href="/search">
+                <span class="icon">🔍</span> Поиск
+            </a>
+            <a href="/inventories">
+                <span class="icon">📋</span> Описи хранения
+            </a>
+            <a href="/dictionary">
+                <span class="icon">📝</span> Словарь вещей
+            </a>
+        </div>
+
+        <!-- ==================== КЛАДОВЩИК ==================== -->
+
+        <div sec:authorize="hasRole('STOREKEEPER')">
+            <a href="/analyst/dashboard">
+                <span class="icon">📊</span> Дашборд
+            </a>
+            <a href="/storekeeper/cells">
+                <span class="icon">📦</span> Справочник ячеек
+            </a>
+        </div>
+
+        <!-- ==================== АНАЛИТИК ==================== -->
+
+        <div sec:authorize="hasRole('ANALYST')">
+            <a href="/analyst/dashboard">
+                <span class="icon">📊</span> Дашборд
+            </a>
+            <a href="/analyst/inventories">
+                <span class="icon">📋</span> Просмотр описей
+            </a>
+            <a href="/analyst/history">
+                <span class="icon">📜</span> История операций
+            </a>
+        </div>
+
+        <!-- ==================== АДМИН ==================== -->
+
+        <div sec:authorize="hasRole('ADMIN')">
+            <a href="/admin/users">
+                <span class="icon">👥</span> Пользователи
+            </a>
+            <a href="/admin/storages">
+                <span class="icon">🏠</span> Склады
+            </a>
+            <a href="/admin/cells">
+                <span class="icon">📦</span> Ячейки
+            </a>
+            <a href="/patients">
+                <span class="icon">👤</span> Пациенты
+            </a>
+            <a href="/analyst/dashboard">
+                <span class="icon">📊</span> Дашборд
+            </a>
+            <a href="/analyst/inventories">
+                <span class="icon">📋</span> Просмотр описей
+            </a>
+            <a href="/analyst/history">
+                <span class="icon">📜</span> История операций
+            </a>
+        </div>
+
+        <!-- ==================== ОБЩИЕ ==================== -->
+
+        <div sec:authorize="!hasRole('ANALYST')">
+            <a href="/instructions/user">
+                <span class="icon">📖</span> Инструкция
+            </a>
+        </div>
+    </nav>
+</div>
+
+<script th:src="@{/js/push-notifications.js}"></script>
+</body>
+</html>

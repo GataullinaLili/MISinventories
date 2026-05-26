@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Словарь вещей — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .sort-btn {
+            cursor: pointer;
+            user-select: none;
+        }
+        .sort-btn.active {
+            color: #287aa3;
+            font-weight: bold;
+        }
+        .dictionary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+        .dictionary-item:hover {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+
+    <div class="content">
+        <h1 class="page-title">📝 Словарь вещей</h1>
+
+        <div class="card">
+            <div class="search-box">
+                <input type="text" id="dict-search" placeholder="Поиск по названию..."
+                       onkeyup="filterAndSort()">
+                <button class="btn btn-primary" onclick="filterAndSort()">🔍</button>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: center;">
+                <span style="color: #888;">Сортировка:</span>
+                <span class="sort-btn active" onclick="setSort('name')" id="sort-name">📋 По названию</span>
+                <span class="sort-btn" onclick="setSort('newest')" id="sort-newest">🆕 Сначала новые</span>
+            </div>
+
+            <div id="dictionary-list"></div>
+
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
+                <h4>➕ Добавить новую вещь</h4>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <input type="text" id="new-item-name" class="form-control"
+                           placeholder="Название вещи">
+                    <button onclick="addDictionaryItem()" class="btn btn-success">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script>
+    // Базовый список вещей
+    let dictionaryItems = [
+        "Куртка зимняя", "Пальто", "Плащ", "Пуховик", "Ветровка", "Пиджак",
+        "Свитер", "Рубашка", "Брюки", "Джинсы", "Футболка", "Толстовка",
+        "Сапоги зимние", "Сапоги осенние", "Ботинки", "Кроссовки", "Туфли", "Тапочки",
+        "Шапка", "Шарф", "Перчатки", "Варежки", "Ремень", "Очки", "Зонт",
+        "Телефон мобильный", "Планшет", "Ноутбук", "Зарядное устройство", "Наушники", "Часы наручные",
+        "Паспорт", "Полис ОМС", "СНИЛС", "Кошелёк", "Банковская карта", "Ключи", "Деньги наличные",
+        "Сумка дорожная", "Чемодан", "Рюкзак", "Пакет",
+        "Зубная щётка", "Зубная паста", "Мыло", "Шампунь", "Расчёска", "Полотенце",
+        "Книга", "Одеяло", "Подушка", "Постельное бельё", "Посуда", "Лекарства личные", "Продукты питания", "Вода"
+    ];
+
+    let currentSort = 'name';
+    let customItems = [];
+
+    // Загрузка customItems из localStorage
+    if (localStorage.getItem('dictionaryCustomItems')) {
+        customItems = JSON.parse(localStorage.getItem('dictionaryCustomItems'));
+    }
+
+    function getAllItems() {
+        return [...dictionaryItems, ...customItems];
+    }
+
+    function renderList(items) {
+        const container = document.getElementById('dictionary-list');
+        if (items.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #888; padding: 20px;">Ничего не найдено</p>';
+            return;
+        }
+        container.innerHTML = items.map((item, index) => `
+                <div class="dictionary-item">
+                    <span>📦 ${item}</span>
+                    <button onclick="selectDictionaryItem('${item.replace(/'/g, "\\'")}')"
+                            class="btn btn-outline btn-sm" title="Использовать">📋 Выбрать</button>
+                </div>
+            `).join('');
+    }
+
+    function filterAndSort() {
+        const query = document.getElementById('dict-search').value.toLowerCase();
+        let items = getAllItems();
+
+        // Фильтрация
+        if (query) {
+            items = items.filter(item => item.toLowerCase().includes(query));
+        }
+
+        // Сортировка
+        if (currentSort === 'name') {
+            items.sort((a, b) => a.localeCompare(b, 'ru'));
+        } else {
+            items.reverse();
+        }
+
+        renderList(items);
+    }
+
+    function setSort(sort) {
+        currentSort = sort;
+        document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('sort-' + sort).classList.add('active');
+        filterAndSort();
+    }
+
+    function addDictionaryItem() {
+        const input = document.getElementById('new-item-name');
+        const name = input.value.trim();
+        if (!name) return;
+        if (getAllItems().includes(name)) {
+            alert('Такая вещь уже есть в словаре');
+            return;
+        }
+        customItems.push(name);
+        localStorage.setItem('dictionaryCustomItems', JSON.stringify(customItems));
+        input.value = '';
+        filterAndSort();
+    }
+
+    function selectDictionaryItem(name) {
+        // Сохраняем в sessionStorage для передачи на страницу создания описи
+        sessionStorage.setItem('selectedDictionaryItem', name);
+        window.history.back(); // Возвращаемся к форме описи
+    }
+
+    // Инициализация
+    filterAndSort();
+</script>
+</body>
+</html>

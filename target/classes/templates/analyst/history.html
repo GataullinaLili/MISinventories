@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История операций — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .search-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .search-tab {
+            padding: 10px 18px;
+            border: 2px solid #dce8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            background: white;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .search-tab.active {
+            background: #287aa3;
+            color: white;
+            border-color: #287aa3;
+        }
+        .search-tab:hover:not(.active) { border-color: #287aa3; }
+        .search-panel {
+            display: none;
+            margin-bottom: 15px;
+        }
+        .search-panel.active {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-panel input {
+            padding: 10px 12px;
+            border: 2px solid #dce8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-panel input:focus { outline: none; border-color: #287aa3; }
+
+        .inventory-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .inventory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: #f8f9fa;
+            cursor: pointer;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .inventory-header:hover { background: #f0f2f5; }
+        .inventory-body { display: none; padding: 16px; }
+        .inventory-body.active { display: block; }
+
+        .timeline {
+            position: relative;
+            padding-left: 28px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #dce8f0;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 14px;
+            padding: 10px 14px;
+            background: #fafafa;
+            border-radius: 8px;
+            border-left: 3px solid #287aa3;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -22px;
+            top: 12px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #287aa3;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px #287aa3;
+        }
+        .timeline-item.action-CREATED { border-left-color: #e65100; }
+        .timeline-item.action-CREATED::before { background: #e65100; box-shadow: 0 0 0 2px #e65100; }
+        .timeline-item.action-PLACED { border-left-color: #2e7d32; }
+        .timeline-item.action-PLACED::before { background: #2e7d32; box-shadow: 0 0 0 2px #2e7d32; }
+        .timeline-item.action-MOVED { border-left-color: #287aa3; }
+        .timeline-item.action-MOVED::before { background: #287aa3; box-shadow: 0 0 0 2px #287aa3; }
+        .timeline-item.action-ISSUED { border-left-color: #c62828; }
+        .timeline-item.action-ISSUED::before { background: #c62828; box-shadow: 0 0 0 2px #c62828; }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .timeline-action {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .action-CREATED { background: #fff3e0; color: #e65100; }
+        .action-PLACED { background: #e8f5e9; color: #2e7d32; }
+        .action-MOVED { background: #e3f2fd; color: #287aa3; }
+        .action-ISSUED { background: #fce4ec; color: #c62828; }
+        .timeline-date { font-size: 11px; color: #888; }
+        .timeline-details { font-size: 13px; color: #555; line-height: 1.5; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-created { background: #fff3e0; color: #e65100; }
+        .status-placed { background: #e8f5e9; color: #2e7d32; }
+        .status-moved { background: #e3f2fd; color: #287aa3; }
+        .status-issued { background: #fce4ec; color: #c62828; }
+
+        .no-results { text-align: center; padding: 60px; color: #888; }
+        .loading { text-align: center; padding: 20px; color: #888; }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+    <div class="content">
+        <h1 class="page-title">📜 История операций</h1>
+
+        <!-- Поиск -->
+        <div class="card">
+            <div class="search-tabs">
+                <div class="search-tab active" onclick="switchTab('all')">📋 Все описи</div>
+                <div class="search-tab" onclick="switchTab('inventory')">📦 По номеру описи</div>
+                <div class="search-tab" onclick="switchTab('patient')">🏥 По номеру истории</div>
+                <div class="search-tab" onclick="switchTab('user')">👤 По сотруднику</div>
+            </div>
+
+            <div id="panel-all" class="search-panel active">
+                <span style="color:#888;">Показаны все описи. Нажмите на опись, чтобы увидеть историю операций.</span>
+                <button onclick="loadAllHistory()" class="btn btn-outline btn-sm">🔄 Обновить</button>
+            </div>
+
+            <div id="panel-inventory" class="search-panel">
+                <input type="text" id="search-inventory-id" class="form-control" placeholder="Номер описи...">
+                <button onclick="searchByInventory()" class="btn btn-primary">🔍</button>
+            </div>
+
+            <div id="panel-patient" class="search-panel">
+                <input type="text" id="search-patient-card" class="form-control" placeholder="Номер истории...">
+                <button onclick="searchByPatient()" class="btn btn-primary">🔍</button>
+            </div>
+
+            <div id="panel-user" class="search-panel">
+                <input type="text" id="search-user-login" class="form-control" placeholder="Логин сотрудника...">
+                <button onclick="searchByUser()" class="btn btn-primary">🔍</button>
+            </div>
+        </div>
+
+        <div id="history-results">
+            <div class="no-results">
+                <p style="font-size:48px;">📜</p>
+                <p>Загрузка списка описей...</p>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script>
+    var currentTab = 'all';
+
+    // При загрузке показываем все описи
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAllInventories();
+    });
+
+    function switchTab(tab) {
+        currentTab = tab;
+        var tabs = document.querySelectorAll('.search-tab');
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+
+        var idx = tab === 'all' ? 0 : tab === 'inventory' ? 1 : tab === 'patient' ? 2 : 3;
+        tabs[idx].classList.add('active');
+
+        document.querySelectorAll('.search-panel').forEach(function(p) { p.classList.remove('active'); });
+        document.getElementById('panel-' + tab).classList.add('active');
+
+        if (tab === 'all') {
+            loadAllInventories();
+        } else {
+            document.getElementById('history-results').innerHTML =
+                '<div class="no-results"><p style="font-size:48px;">📜</p><p>Введите запрос для поиска</p></div>';
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function statusDisplay(s) {
+        switch(s) {
+            case 'CREATED': return 'Создана';
+            case 'PLACED': return 'Размещена';
+            case 'MOVED': return 'Перемещена';
+            case 'ISSUED': return 'Выдана';
+            default: return s;
+        }
+    }
+
+    function actionDisplay(a) {
+        switch(a) {
+            case 'CREATED': return 'Создание описи';
+            case 'PLACED': return 'Размещение';
+            case 'MOVED': return 'Перемещение';
+            case 'ISSUED': return 'Выдача';
+            default: return a;
+        }
+    }
+
+    // Загрузка всех описей с их историей
+    function loadAllInventories() {
+        var container = document.getElementById('history-results');
+        container.innerHTML = '<div class="loading"><p>⏳ Загрузка описей...</p></div>';
+
+        fetch('/api/inventory/all')
+            .then(function(res) { return res.json(); })
+            .then(function(inventories) {
+                if (!inventories || inventories.length === 0) {
+                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">📋</p><p>Нет описей</p></div>';
+                    return;
+                }
+
+                var html = '';
+                inventories.forEach(function(inv) {
+                    var sc = inv.status === 'CREATED' ? 'status-created' :
+                        inv.status === 'ISSUED' ? 'status-issued' :
+                            inv.status === 'MOVED' ? 'status-moved' : 'status-placed';
+
+                    html += '<div class="inventory-card" id="inv-card-' + inv.id + '">' +
+                        '<div class="inventory-header" onclick="toggleInventoryHistory(' + inv.id + ')">' +
+                        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+                        '<strong style="color:#287aa3;">Опись №' + inv.id + '</strong>' +
+                        '<span class="status-badge ' + sc + '">' + statusDisplay(inv.status) + '</span>' +
+                        '<span style="font-size:13px;color:#555;">' + escapeHtml(inv.patient ? inv.patient.fullName : '—') + '</span>' +
+                        '<span style="font-size:12px;color:#888;">ИБ ' + escapeHtml(inv.patient ? inv.patient.medicalCardNumber : '—') + '</span>' +
+                        '</div>' +
+                        '<span style="font-size:18px;transition:transform 0.3s;" id="arrow-' + inv.id + '">▼</span>' +
+                        '</div>' +
+                        '<div class="inventory-body" id="inv-body-' + inv.id + '">' +
+                        '<div class="loading">⏳ Загрузка истории...</div>' +
+                        '</div>' +
+                        '</div>';
+                });
+
+                container.innerHTML = html;
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="no-results" style="color:#c62828;"><p>Ошибка загрузки описей</p></div>';
+            });
+    }
+
+    // Загрузка истории для конкретной описи
+    function toggleInventoryHistory(inventoryId) {
+        var body = document.getElementById('inv-body-' + inventoryId);
+        var arrow = document.getElementById('arrow-' + inventoryId);
+
+        if (body.classList.contains('active')) {
+            // Скрываем
+            body.classList.remove('active');
+            arrow.style.transform = 'rotate(0deg)';
+            return;
+        }
+
+        // Показываем и загружаем историю
+        body.classList.add('active');
+        arrow.style.transform = 'rotate(180deg)';
+        body.innerHTML = '<div class="loading">⏳ Загрузка истории...</div>';
+
+        fetch('/analyst/api/history/inventory/' + inventoryId)
+            .then(function(res) { return res.json(); })
+            .then(function(history) {
+                if (!history || history.length === 0) {
+                    body.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Нет записей об операциях</div>';
+                    return;
+                }
+
+                var html = '<div class="timeline">';
+                history.forEach(function(h) {
+                    var date = h.performedAt ? new Date(h.performedAt).toLocaleString('ru') : '—';
+                    var ac = h.action;
+                    html += '<div class="timeline-item action-' + ac + '">' +
+                        '<div class="timeline-header">' +
+                        '<span class="timeline-action action-' + ac + '">' + actionDisplay(ac) + '</span>' +
+                        '<span class="timeline-date">' + date + '</span>' +
+                        '</div>' +
+                        '<div class="timeline-details">' +
+                        '<strong>Выполнил:</strong> ' + escapeHtml(h.performedBy || '—');
+
+                    if (ac === 'MOVED' || ac === 'PLACED') {
+                        if (h.previousCell) {
+                            html += '<br>Из ячейки: <strong>' + escapeHtml(h.previousCell) + '</strong>';
+                        }
+                        if (h.newCell) {
+                            html += '<br>В ячейку: <strong>' + escapeHtml(h.newCell) + '</strong>';
+                        }
+                        if (ac === 'PLACED' && !h.previousCell) {
+                            html += '<br>Первичное размещение';
+                        }
+                    }
+
+                    if (ac === 'ISSUED') {
+                        html += '<br>Вещи выданы пациенту';
+                        if (h.previousCell) {
+                            html += ' (из ячейки ' + escapeHtml(h.previousCell) + ')';
+                        }
+                    }
+
+                    if (ac === 'CREATED') {
+                        html += '<br>Оформлена опись';
+                    }
+
+                    html += '</div></div>';
+                });
+                html += '</div>';
+                body.innerHTML = html;
+            })
+            .catch(function() {
+                body.innerHTML = '<div style="text-align:center;padding:20px;color:#c62828;">Ошибка загрузки истории</div>';
+            });
+    }
+
+    // Поиск по номеру описи
+    function searchByInventory() {
+        var id = document.getElementById('search-inventory-id').value.trim();
+        if (!id) return;
+        var container = document.getElementById('history-results');
+        container.innerHTML = '<div class="loading">⏳ Поиск...</div>';
+
+        fetch('/api/inventory/' + id)
+            .then(function(res) {
+                if (!res.ok) throw new Error('Не найдено');
+                return res.json();
+            })
+            .then(function(inv) {
+                var sc = inv.status === 'CREATED' ? 'status-created' :
+                    inv.status === 'ISSUED' ? 'status-issued' :
+                        inv.status === 'MOVED' ? 'status-moved' : 'status-placed';
+
+                container.innerHTML =
+                    '<div class="inventory-card">' +
+                    '<div class="inventory-header" onclick="toggleInventoryHistory(' + inv.id + ')">' +
+                    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+                    '<strong style="color:#287aa3;">Опись №' + inv.id + '</strong>' +
+                    '<span class="status-badge ' + sc + '">' + statusDisplay(inv.status) + '</span>' +
+                    '<span style="font-size:13px;color:#555;">' + escapeHtml(inv.patient ? inv.patient.fullName : '—') + '</span>' +
+                    '</div>' +
+                    '<span style="font-size:18px;" id="arrow-' + inv.id + '">▼</span>' +
+                    '</div>' +
+                    '<div class="inventory-body" id="inv-body-' + inv.id + '">' +
+                    '<div class="loading">⏳ Загрузка истории...</div>' +
+                    '</div>' +
+                    '</div>';
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>Опись не найдена</p></div>';
+            });
+    }
+
+    // Поиск по номеру истории
+    function searchByPatient() {
+        var card = document.getElementById('search-patient-card').value.trim();
+        if (!card) return;
+        var container = document.getElementById('history-results');
+        container.innerHTML = '<div class="loading">⏳ Поиск...</div>';
+
+        fetch('/analyst/api/history/patient?cardNumber=' + encodeURIComponent(card))
+            .then(function(res) { return res.json(); })
+            .then(function(history) {
+                if (!history || history.length === 0) {
+                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>История не найдена</p></div>';
+                    return;
+                }
+                renderHistoryOnly(history, container);
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="no-results" style="color:#c62828;"><p>Ошибка поиска</p></div>';
+            });
+    }
+
+    // Поиск по сотруднику
+    function searchByUser() {
+        var login = document.getElementById('search-user-login').value.trim();
+        if (!login) return;
+        var container = document.getElementById('history-results');
+        container.innerHTML = '<div class="loading">⏳ Поиск...</div>';
+
+        fetch('/analyst/api/history/user?login=' + encodeURIComponent(login))
+            .then(function(res) { return res.json(); })
+            .then(function(history) {
+                if (!history || history.length === 0) {
+                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>История не найдена</p></div>';
+                    return;
+                }
+                renderHistoryOnly(history, container);
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="no-results" style="color:#c62828;"><p>Ошибка поиска</p></div>';
+            });
+    }
+
+    // Отображение только истории (без карточек описей)
+    function renderHistoryOnly(history, container) {
+        var html = '<div class="timeline">';
+        history.forEach(function(h) {
+            var date = h.performedAt ? new Date(h.performedAt).toLocaleString('ru') : '—';
+            var ac = h.action;
+            html += '<div class="timeline-item action-' + ac + '">' +
+                '<div class="timeline-header">' +
+                '<span class="timeline-action action-' + ac + '">' + actionDisplay(ac) + '</span>' +
+                '<span class="timeline-date">' + date + '</span>' +
+                '</div>' +
+                '<div class="timeline-details">' +
+                '<strong>Опись №' + (h.inventory ? h.inventory.id : '—') + '</strong>' +
+                (h.inventory && h.inventory.patient ? ' | ' + escapeHtml(h.inventory.patient.fullName) : '') +
+                '<br><strong>Выполнил:</strong> ' + escapeHtml(h.performedBy || '—');
+
+            if (ac === 'MOVED' || ac === 'PLACED') {
+                if (h.previousCell) html += '<br>Из: ' + escapeHtml(h.previousCell);
+                if (h.newCell) html += ' → В: ' + escapeHtml(h.newCell);
+            }
+            if (ac === 'ISSUED') html += '<br>Вещи выданы';
+
+            html += '</div></div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    // Enter в полях ввода
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            if (currentTab === 'inventory') searchByInventory();
+            else if (currentTab === 'patient') searchByPatient();
+            else if (currentTab === 'user') searchByUser();
+        }
+    });
+
+    function loadAllHistory() {
+        loadAllInventories();
+    }
+</script>
+</body>
+</html>

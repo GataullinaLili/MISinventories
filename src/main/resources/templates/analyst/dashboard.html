@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дашборд — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            text-align: center;
+            border-left: 4px solid #287aa3;
+        }
+        .stat-card.success { border-left-color: #2e7d32; }
+        .stat-card.warning { border-left-color: #f39c12; }
+        .stat-value { font-size: 30px; font-weight: 700; color: #1a3a4a; margin: 8px 0; }
+        .stat-label { font-size: 12px; color: #6c757d; text-transform: uppercase; }
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+        .chart-title { font-size: 16px; font-weight: 600; color: #287aa3; margin-bottom: 15px; }
+        .legend { display: flex; gap: 20px; margin-bottom: 10px; font-size: 13px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-color { width: 14px; height: 14px; border-radius: 3px; }
+        .bar-label { font-size: 10px; color: #888; text-align: center; margin-top: 4px; }
+        .flex-bar-container {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+            height: 180px;
+            padding: 0 10px;
+        }
+        .flex-bar-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .bar-created {
+            width: 100%;
+            max-width: 50px;
+            background: #287aa3;
+            border-radius: 4px 4px 0 0;
+        }
+        .bar-issued {
+            width: 100%;
+            max-width: 50px;
+            background: #2e7d32;
+            border-radius: 4px 4px 0 0;
+        }
+        .bar-value-text {
+            font-size: 11px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+    <div class="content">
+        <h1 class="page-title">📊 Панель аналитики</h1>
+
+        <!-- Сообщение об ошибке -->
+        <div th:if="${error}" style="background:#fce4ec;padding:15px;border-radius:8px;margin-bottom:20px;color:#c62828;" th:text="${error}"></div>
+
+        <!-- Ключевые показатели -->
+        <div class="stats-grid" th:if="${stats != null}">
+            <div class="stat-card">
+                <div style="font-size:24px;">📦</div>
+                <div class="stat-label">Активных описей</div>
+                <div class="stat-value" th:text="${stats.activeInventories}">0</div>
+            </div>
+            <div class="stat-card success">
+                <div style="font-size:24px;">📋</div>
+                <div class="stat-label">Операций сегодня</div>
+                <div class="stat-value" th:text="${stats.operationsToday}">0</div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size:24px;">✅</div>
+                <div class="stat-label">Выдано сегодня</div>
+                <div class="stat-value" th:text="${stats.issuedToday}">0</div>
+            </div>
+            <div class="stat-card warning">
+                <div style="font-size:24px;">🏠</div>
+                <div class="stat-label">Занято ячеек</div>
+                <div class="stat-value">
+                    <span th:text="${stats.occupiedCells}">0</span>
+                    <span style="font-size:16px;color:#888;">/</span>
+                    <span style="font-size:16px;color:#888;" th:text="${stats.totalCells}">0</span>
+                </div>
+            </div>
+            <div class="stat-card success">
+                <div style="font-size:24px;">📦</div>
+                <div class="stat-label">Свободно ячеек</div>
+                <div class="stat-value" th:text="${stats.freeCells}">0</div>
+            </div>
+        </div>
+
+        <!-- График активности -->
+        <div class="chart-container" th:if="${dailyLoad != null and !dailyLoad.isEmpty()}">
+            <div class="chart-title">📈 Активность за последние 7 дней</div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color" style="background:#287aa3;"></div><span>Создано описей</span></div>
+                <div class="legend-item"><div class="legend-color" style="background:#2e7d32;"></div><span>Выдано описей</span></div>
+            </div>
+            <div class="flex-bar-container">
+                <div th:each="day : ${dailyLoad}" class="flex-bar-item">
+                    <div class="bar-value-text" th:text="${day.createdCount}">0</div>
+                    <div class="bar-created" th:style="'height:' + (${day.createdCount} * 15 > 160 ? 160 : ${day.createdCount} * 15) + 'px'"></div>
+                    <div class="bar-value-text" th:text="${day.issuedCount}">0</div>
+                    <div class="bar-issued" th:style="'height:' + (${day.issuedCount} * 15 > 160 ? 160 : ${day.issuedCount} * 15) + 'px'"></div>
+                    <div class="bar-label" th:text="${#strings.substring(day.date, 8, 10) + '.' + #strings.substring(day.date, 5, 7)}">01.01</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Выписанные пациенты -->
+        <div class="chart-container" th:if="${dischargedAlerts != null and !dischargedAlerts.isEmpty()}">
+            <div class="chart-title" style="color:#e65100;">⚠ Выписанные пациенты с невыданными вещами</div>
+            <div th:each="inv : ${dischargedAlerts}" style="background:#fff3e0; padding:12px 15px; border-radius:8px; margin-bottom:8px; border-left:4px solid #f39c12;">
+                <div>
+                    <strong>Опись №<span th:text="${inv.id}">—</span></strong>
+                    — <span th:text="${inv.patient.fullName}">—</span>
+                    (ИБ <span th:text="${inv.patient.medicalCardNumber}">—</span>)
+                </div>
+            </div>
+        </div>
+
+        <!-- Пустое состояние -->
+        <div th:if="${stats == null and error == null}" style="text-align:center;padding:60px;color:#888;">
+            <p style="font-size:48px;">📊</p>
+            <p>Загрузка данных...</p>
+        </div>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

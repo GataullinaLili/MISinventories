@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инструкция — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .instruction-section { margin-bottom: 25px; }
+        .instruction-section h3 { color: #287aa3; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #e8f2f8; }
+        .step { display: flex; gap: 12px; margin-bottom: 12px; padding: 12px 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #287aa3; }
+        .step-number { background: #287aa3; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; flex-shrink: 0; }
+        .step-content { flex: 1; font-size: 14px; }
+        .step-content strong { color: #1a3a4a; }
+        .note { background: #fff8e1; padding: 12px 15px; border-radius: 8px; margin-top: 8px; border-left: 4px solid #f39c12; font-size: 13px; }
+        .note strong { color: #e65100; }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+    <div class="content">
+        <h1 class="page-title">📖 Инструкция пользователя</h1>
+
+        <div class="card">
+            <h3 style="color:#287aa3;margin-bottom:15px;">Содержание</h3>
+            <ol style="line-height:2;font-size:14px;">
+                <li><a href="#s1" style="color:#287aa3;">Вход в систему</a></li>
+                <li><a href="#s2" style="color:#287aa3;">Поиск пациента и создание описи</a></li>
+                <li><a href="#s3" style="color:#287aa3;">Размещение вещей на хранение</a></li>
+                <li><a href="#s4" style="color:#287aa3;">Выдача вещей</a></li>
+                <li><a href="#s5" style="color:#287aa3;">Сканирование QR-кода</a></li>
+            </ol>
+        </div>
+
+        <!-- 1. Вход -->
+        <div class="instruction-section" id="s1">
+            <h3>1. Вход в систему</h3>
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content"><strong>Откройте браузер</strong> (Chrome, Яндекс.Браузер, Edge).</div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content"><strong>Перейдите по адресу</strong>, выданному администратором.</div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content"><strong>Введите логин и пароль</strong>, нажмите «Войти».</div>
+            </div>
+        </div>
+
+        <!-- 2. Поиск и опись -->
+        <div class="instruction-section" id="s2">
+            <h3>2. Поиск пациента и создание описи</h3>
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content"><strong>На странице «Поиск»</strong> введите ФИО пациента или номер истории болезни.</div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content"><strong>Нажмите «🔍 Найти»</strong> — появится список пациентов.</div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content"><strong>Нажмите «📋 Создать опись»</strong> рядом с нужным пациентом.</div>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content"><strong>Заполните перечень вещей:</strong> название, количество, описание (цвет, размер).</div>
+            </div>
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content"><strong>Нажмите «💾 Сохранить опись».</strong></div>
+            </div>
+            <div class="note"><strong>⚠</strong> После сохранения редактирование описи недоступно.</div>
+        </div>
+
+        <!-- 3. Размещение -->
+        <div class="instruction-section" id="s3">
+            <h3>3. Размещение вещей на складе</h3>
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content"><strong>Перейдите в «📋 Описи хранения».</strong></div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content"><strong>Найдите опись</strong> по номеру или отсканируйте QR-код.</div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content"><strong>Нажмите «📦 Разместить»</strong>, выберите склад и свободную ячейку.</div>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content"><strong>Нажмите «Разместить».</strong> Вещи закреплены за ячейкой.</div>
+            </div>
+        </div>
+
+        <!-- 4. Выдача -->
+        <div class="instruction-section" id="s4">
+            <h3>4. Выдача вещей</h3>
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content"><strong>Найдите опись</strong> в разделе «Описи хранения».</div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content"><strong>Нажмите «✅ Выдать»</strong> и подтвердите действие.</div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content"><strong>При необходимости</strong> нажмите «📥 Скачать» для печати акта возврата.</div>
+            </div>
+        </div>
+
+        <!-- 5. QR -->
+        <div class="instruction-section" id="s5">
+            <h3>5. Сканирование QR-кода</h3>
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content"><strong>Откройте раздел «📋 Описи хранения».</strong></div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content"><strong>Кликните мышкой в поле поиска</strong> (строка «№ описи или номер истории»).</div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content"><strong>Отсканируйте QR-код</strong> с распечатанной описи.</div>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content"><strong>Нажмите Enter</strong> — нужная опись откроется автоматически.</div>
+            </div>
+            <div class="note"><strong>💡 Совет:</strong> если сканер вводит данные в адресную строку — кликните ещё раз в поле поиска и повторите сканирование.</div>
+        </div>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

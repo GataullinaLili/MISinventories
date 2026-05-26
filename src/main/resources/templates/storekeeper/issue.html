@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выдача вещей — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <meta name="csrf-token" th:content="${_csrf.token}">
+    <meta name="csrf-header" th:content="${_csrf.headerName}">
+    <style>
+        .error-message { color: #e74c3c; padding: 10px; border-radius: 4px; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+
+    <div class="content">
+        <h1 class="page-title">Выдача вещей</h1>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Найти опись для выдачи</h3>
+            </div>
+            <div class="search-box">
+                <input type="text" id="issue-search" placeholder="Введите номер описи, ФИО пациента или отсканируйте QR-код...">
+                <button onclick="searchInventoryForIssue()" class="btn btn-primary">🔍 Найти</button>
+                <button onclick="startIssueQrScanner()" class="btn btn-outline" style="margin-left: 10px;">📷 Сканировать QR описи</button>
+            </div>
+            <div id="issue-error" class="error-message"></div>
+        </div>
+
+        <div id="issue-results" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Найденные описи</h3>
+                </div>
+                <div id="issue-list"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Описи, готовые к выдаче</h3>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr><th>№ описи</th><th>Пациент</th><th>Склад</th><th>Ячейка</th><th>Дата создания</th><th>Действие</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="inv : ${placedInventories}">
+                        <td><strong>#<span th:text="${inv.id}">1001</span></strong></td>
+                        <td th:text="${inv.patient.fullName}">Иванов И.И.</td>
+                        <td th:text="${inv.storage?.name ?: '—'}">Склад №1</td>
+                        <td><span class="status status-placed" th:text="${inv.cell?.name ?: '—'}">А-01</span></td>
+                        <td th:text="${#temporals.format(inv.createdAt, 'dd.MM.yyyy')}">01.01.2024</td>
+                        <td>
+                            <button th:onclick="'confirmIssue(' + ${inv.id} + ')'" class="btn btn-success btn-sm">✅ Выдать</button>
+                            <button th:onclick="'showInventoryQrCode(' + ${inv.id} + ')'" class="btn btn-outline btn-sm">📱 Показать QR</button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения выдачи -->
+<div id="issue-confirm-modal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>⚠ Подтверждение выдачи</h3>
+            <button class="modal-close" onclick="closeModal('issue-confirm-modal')">✕</button>
+        </div>
+        <div id="issue-confirm-content"></div>
+        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <strong>⚠ Внимание!</strong> После выдачи опись будет закрыта. Отменить это действие невозможно.
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button id="confirm-issue-btn" class="btn btn-success" onclick="issueInventory()">✅ Подтвердить выдачу</button>
+            <button class="btn btn-outline" onclick="closeModal('issue-confirm-modal')">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="csrf-header"]').getAttribute('content');
+    let currentIssueInventoryId = null;
+
+    function showError(message) {
+        const errorDiv = document.getElementById('issue-error');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+    }
+
+    function confirmIssue(inventoryId) {
+        fetch('/api/inventory/' + inventoryId, {
+            headers: { [csrfHeader]: csrfToken }
+        })
+            .then(res => res.json())
+            .then(inv => {
+                document.getElementById('issue-confirm-content').innerHTML = `
+                    <p><strong>Опись №${inv.id}</strong></p>
+                    <p>Пациент: <strong>${escapeHtml(inv.patient.fullName)}</strong></p>
+                    <p>№ истории: ${escapeHtml(inv.patient.medicalCardNumber)}</p>
+                    <p>Склад: ${inv.storage?.name || '—'}</p>
+                    <p>Ячейка: ${inv.cell?.name || '—'}</p>
+                    <p>Количество вещей: ${inv.items.length}</p>
+                `;
+                currentIssueInventoryId = inventoryId;
+                openModal('issue-confirm-modal');
+            });
+    }
+
+    function issueInventory() {
+        if (!currentIssueInventoryId) return;
+
+        fetch('/api/inventory/' + currentIssueInventoryId + '/issue', {
+            method: 'POST',
+            headers: { [csrfHeader]: csrfToken }
+        })
+            .then(res => {
+                if (res.ok) {
+                    closeModal('issue-confirm-modal');
+                    location.reload();
+                } else {
+                    showError('Ошибка при выдаче описи');
+                }
+            });
+    }
+
+    function searchInventoryForIssue() {
+        const query = document.getElementById('issue-search').value;
+        if (!query) return;
+
+        fetch('/api/inventory/search?query=' + encodeURIComponent(query) + '&status=PLACED', {
+            headers: { [csrfHeader]: csrfToken }
+        })
+            .then(res => res.json())
+            .then(inventories => {
+                const container = document.getElementById('issue-results');
+                const list = document.getElementById('issue-list');
+
+                if (inventories.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:#888; padding:20px;">Нет описей для выдачи</p>';
+                } else {
+                    let html = '';
+                    inventories.forEach(inv => {
+                        html += `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #eee;">
+                                <div>
+                                    <strong>#${inv.id}</strong> — ${escapeHtml(inv.patient.fullName)}
+                                    <br><small>Склад: ${inv.storage?.name || '—'} | Ячейка: ${inv.cell?.name || '—'}</small>
+                                </div>
+                                <button onclick="confirmIssue(${inv.id})" class="btn btn-success btn-sm">✅ Выдать</button>
+                            </div>`;
+                    });
+                    list.innerHTML = html;
+                }
+                container.style.display = 'block';
+            });
+    }
+
+    function startIssueQrScanner() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showError('Ваш браузер не поддерживает доступ к камере');
+            return;
+        }
+
+        const scannerContainer = document.createElement('div');
+        scannerContainer.id = 'qr-scanner-container';
+        scannerContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10001; display: flex; justify-content: center; align-items: center;';
+        scannerContainer.innerHTML = `
+            <div style="background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px;">
+                <h4>Наведите камеру на QR-код описи</h4>
+                <div id="qr-reader" style="width: 100%;"></div>
+                <button onclick="stopIssueQrScanner()" class="btn btn-outline" style="margin-top: 10px;">Отмена</button>
+            </div>
+        `;
+        document.body.appendChild(scannerContainer);
+
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        window.currentQrScanner = html5QrCode;
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            (decodedText) => {
+                html5QrCode.stop();
+                scannerContainer.remove();
+                // Извлекаем ID описи из QR-данных (формат: INV-123-ИБ-...)
+                let inventoryId = null;
+                const match = decodedText.match(/INV-(\d+)/i);
+                if (match) {
+                    inventoryId = match[1];
+                } else if (/^\d+$/.test(decodedText)) {
+                    inventoryId = decodedText;
+                }
+                if (inventoryId) {
+                    confirmIssue(parseInt(inventoryId));
+                } else {
+                    showError('Неверный QR-код описи');
+                }
+            },
+            (error) => { console.log("QR scan error:", error); }
+        ).catch(err => {
+            showError('Не удалось запустить камеру: ' + err);
+            scannerContainer.remove();
+        });
+    }
+
+    function stopIssueQrScanner() {
+        if (window.currentQrScanner) {
+            window.currentQrScanner.stop();
+            window.currentQrScanner = null;
+        }
+        const container = document.getElementById('qr-scanner-container');
+        if (container) container.remove();
+    }
+
+    function showInventoryQrCode(inventoryId) {
+        fetch('/api/inventory/' + inventoryId + '/qr', {
+            headers: { [csrfHeader]: csrfToken }
+        })
+            .then(res => res.text())
+            .then(qrBase64 => {
+                const win = window.open('', '_blank');
+                win.document.write(`
+                    <!DOCTYPE html>
+                    <html><head><title>QR-код описи №${inventoryId}</title>
+                    <style>body{display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:Arial;}</style>
+                    </head><body>
+                    <img src="${qrBase64}" style="width: 250px;"><br>
+                    <p><strong>Опись №${inventoryId}</strong></p>
+                    <button onclick="window.print()">🖨 Распечатать</button>
+                    </body></html>
+                `);
+            });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    window.openModal = function(id) {
+        document.getElementById(id).style.display = 'flex';
+    };
+    window.closeModal = function(id) {
+        document.getElementById(id).style.display = 'none';
+    };
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пациенты — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .mis-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .mis-status.success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid #2e7d32; }
+        .mis-status.warning { background: #fff3e0; color: #e65100; border-left: 4px solid #f39c12; }
+        .patient-count { font-size: 28px; font-weight: 700; color: #1565c0; }
+
+        /* Подсветка выписанных */
+        tr.discharged {
+            background: #fff5f5 !important;
+        }
+        tr.discharged td {
+            color: #c62828;
+        }
+        tr.discharged:hover td {
+            background: #ffebee !important;
+        }
+        .discharged-badge {
+            display: inline-block;
+            background: #c62828;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+        .active-badge {
+            display: inline-block;
+            background: #2e7d32;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+    <div class="content">
+        <h1 class="page-title">📊 Пациенты</h1>
+
+        <!-- Статус синхронизации -->
+        <div class="mis-status success">
+            <strong>🏥 Синхронизация с МИС:</strong> пациенты автоматически загружаются из Медицинской Информационной Системы.
+            <span style="margin-left:10px;font-size:12px;opacity:0.7;">Новые добавляются, существующие обновляются.</span>
+        </div>
+
+        <!-- Счётчик -->
+        <div class="card" style="text-align:center;margin-bottom:20px;">
+            <div class="patient-count" th:text="${totalPatients != null ? totalPatients : 0}">0</div>
+            <div style="color:#888;font-size:14px;">пациентов в базе</div>
+        </div>
+
+        <!-- Таблица пациентов -->
+        <div class="card" th:if="${patients != null && !patients.isEmpty()}">
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Номер истории</th>
+                        <th>ФИО</th>
+                        <th>Дата рождения</th>
+                        <th>Статус</th>
+                        <th>Дата выписки</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="p : ${patients}"
+                        th:classappend="${p.isDischarged} ? 'discharged' : ''">
+                        <td><strong th:text="${p.medicalCardNumber}">—</strong></td>
+                        <td>
+                            <span th:text="${p.fullName}">—</span>
+                            <span th:if="${p.isDischarged}" class="discharged-badge">ВЫПИСАН</span>
+                        </td>
+                        <td th:text="${p.birthDate}">—</td>
+                        <td>
+                            <span th:if="${p.isDischarged}" style="color:#c62828;font-weight:600;">⚠ Выписан</span>
+                            <span th:unless="${p.isDischarged}" class="active-badge">Активен</span>
+                        </td>
+                        <td th:text="${p.dischargedAt != null ? #temporals.format(p.dischargedAt, 'dd.MM.yyyy') : '—'}">—</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Пустая таблица -->
+        <div th:unless="${patients != null && !patients.isEmpty()}" style="text-align:center;padding:40px;color:#888;">
+            <p style="font-size:48px;">📊</p>
+            <p>Нет пациентов. Проверьте подключение к МИС (порт 8081).</p>
+        </div>
+
+        <!-- Импорт/Экспорт Excel -->
+        <div class="card" style="margin-top:20px;">
+            <div class="card-header"><h3 class="card-title">Дополнительно</h3></div>
+            <div style="display:flex;gap:15px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:250px;">
+                    <h4 style="font-size:14px;margin-bottom:10px;">📥 Импорт из Excel</h4>
+                    <form th:action="@{/patients/import}" method="post" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                        </div>
+                        <button type="submit" class="btn btn-outline btn-sm">Загрузить Excel</button>
+                    </form>
+                    <div th:if="${result != null && result.imported != null}" style="margin-top:15px;background:#e8f5e9;padding:10px;border-radius:8px;">
+                        <p>✅ Загружено: <strong th:text="${result.imported}">0</strong></p>
+                        <p>⏩ Пропущено: <strong th:text="${result.skipped}">0</strong></p>
+                    </div>
+                </div>
+                <div style="flex:1;min-width:250px;">
+                    <h4 style="font-size:14px;margin-bottom:10px;">📤 Экспорт</h4>
+                    <p style="color:#888;font-size:13px;margin-bottom:10px;">Скачать всех пациентов в Excel</p>
+                    <a th:href="@{/patients/export}" class="btn btn-outline btn-sm">Скачать Excel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

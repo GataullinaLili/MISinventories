@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Описи хранения — АРМ.Вещи</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .inventory-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .inventory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+            user-select: none;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .inventory-header:hover { background: #f0f2f5; }
+        .inventory-id { font-size: 16px; font-weight: 700; color: #287aa3; }
+        .inventory-body { padding: 20px; display: none; }
+        .inventory-body.active { display: block; }
+        .info-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .info-item { background: #f8f9fa; padding: 10px 12px; border-radius: 8px; }
+        .info-label { font-size: 11px; color: #6c757d; text-transform: uppercase; margin-bottom: 3px; }
+        .info-value { font-size: 14px; font-weight: 600; color: #212529; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .items-table th { background: #287aa3; color: white; padding: 8px 12px; text-align: left; font-size: 12px; }
+        .items-table td { padding: 8px 12px; border-bottom: 1px solid #e9ecef; font-size: 13px; vertical-align: middle; }
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-created { background: #fff3e0; color: #e65100; }
+        .status-placed { background: #e8f5e9; color: #2e7d32; }
+        .status-moved { background: #e3f2fd; color: #287aa3; }
+        .status-issued { background: #fce4ec; color: #c62828; }
+
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .search-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 300px; flex-wrap: wrap; }
+        .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
+        .search-input-wrapper input {
+            width: 100%; padding: 10px 40px 10px 12px;
+            border: 2px solid #ddd; border-radius: 8px; font-size: 14px;
+            transition: all 0.3s; box-sizing: border-box;
+        }
+        .search-input-wrapper input:focus {
+            outline: none; border-color: #287aa3;
+            box-shadow: 0 0 0 3px rgba(40,122,163,0.1);
+        }
+        .search-input-wrapper input.scan-active {
+            background-color: #fff9c4;
+            border-color: #ff9800;
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: #ff9800; }
+            50% { border-color: #f44336; }
+        }
+        .scan-icon {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; font-size: 20px; cursor: pointer;
+            color: #999; padding: 6px 8px; border-radius: 4px;
+        }
+        .scan-icon:hover { color: #1a3a4a; background: #e8f0fe; }
+        .scan-icon.active { color: #e74c3c; animation: pulse 0.8s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .scan-hint { font-size: 12px; margin-top: 4px; min-height: 18px; color: #888; }
+        .scan-hint.ready { color: #e65100; font-weight: 500; }
+
+        .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .sort-btn {
+            padding: 8px 16px; border: 2px solid #dce8f0; border-radius: 8px;
+            cursor: pointer; font-size: 13px; background: white; transition: all 0.2s;
+            font-weight: 500;
+        }
+        .sort-btn.active { background: #287aa3; color: white; border-color: #287aa3; }
+        .sort-btn:hover:not(.active) { border-color: #287aa3; }
+
+        .filter-toggle { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .filter-toggle span { font-size: 13px; color: #6c757d; }
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 22px; }
+        .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: #1a3a4a; }
+        input:checked + .toggle-slider:before { transform: translateX(22px); }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 12px; padding: 25px; width: 90%; max-width: 480px; }
+        .modal h3 { margin-top: 0; margin-bottom: 15px; }
+        .modal-buttons { display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px; }
+
+        .highlight { box-shadow: 0 0 0 3px #ff9800 !important; }
+
+        .btn-secondary { background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; padding: 10px 18px; transition: background 0.3s; }
+        .btn-secondary:hover { background: #5a6268; }
+
+        .item-photo { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; transition: transform 0.2s; }
+        .item-photo:hover { transform: scale(1.1); }
+        .item-no-photo { color: #ccc; font-size: 20px; }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<div class="main-content">
+    <div th:replace="~{fragments/topbar :: topbar}"></div>
+    <div class="content">
+        <!-- Верхняя панель -->
+        <div class="top-bar">
+            <h1 class="page-title" style="margin:0;font-size:22px;">📋 Описи хранения</h1>
+            <div class="controls-row">
+                <button class="sort-btn active" id="sort-date" onclick="sortInventories('date')">📅 По дате</button>
+                <button class="sort-btn" id="sort-id" onclick="sortInventories('id')">🔢 По номеру</button>
+                <div class="filter-toggle">
+                    <span>Активные</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showAllToggle" th:checked="${showAll}"
+                               onchange="window.location.href='/inventories?showAll=' + this.checked">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Все</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Поиск -->
+        <div id="search-area" style="margin-bottom:10px;">
+            <div class="search-row">
+                <div class="search-input-wrapper">
+                    <input type="text" id="search-inventory" placeholder="№ описи или отсканируйте QR-код..." autocomplete="off">
+                    <button type="button" class="scan-icon" id="scan-btn" onclick="toggleScanMode()" title="Сканировать QR-код">📷</button>
+                </div>
+                <button type="button" onclick="searchInventory()" class="btn btn-primary">🔍 Найти</button>
+                <button type="button" onclick="searchByMedicalCard()" class="btn btn-secondary">📋 Поиск по истории</button>
+                <button type="button" onclick="clearSearch()" class="btn btn-outline btn-sm" id="clear-btn" style="display:none;">✕ Очистить</button>
+            </div>
+            <div class="scan-hint" id="scan-hint"></div>
+        </div>
+
+        <!-- Сообщения -->
+        <div th:if="${success}" style="background:#e8f5e9;padding:12px;border-radius:8px;margin-bottom:15px;color:#2e7d32;" th:text="${success}"></div>
+        <div th:if="${error}" style="background:#fce4ec;padding:12px;border-radius:8px;margin-bottom:15px;color:#c62828;" th:text="${error}"></div>
+
+        <!-- Список описей -->
+        <div id="inventories-container">
+            <div th:each="inv : ${inventories}" class="inventory-card"
+                 th:attr="data-id=${inv.id},data-date=${inv.createdAt},data-card=${inv.patient.medicalCardNumber}">
+
+                <div class="inventory-header" onclick="toggleCard(this)">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span class="inventory-id">Опись №<span th:text="${inv.id}">1</span></span>
+                        <span class="status-badge"
+                              th:classappend="${inv.status.name() == 'CREATED' ? 'status-created' :
+                                               (inv.status.name() == 'MOVED' ? 'status-moved' :
+                                               (inv.status.name() == 'PLACED' ? 'status-placed' : 'status-issued'))}"
+                              th:text="${inv.status.displayName}">Создана</span>
+                        <span th:if="${inv.patient.isDischarged}" style="background:#fff5f5;color:#c62828;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">⚠ ВЫПИСАН</span>
+                        <span style="font-size:13px;color:#555;" th:text="${inv.patient.fullName}"></span>
+                    </div>
+                    <span style="font-size:18px;transition:transform 0.3s;" class="arrow">▼</span>
+                </div>
+
+                <div class="inventory-body">
+                    <div th:if="${inv.patient.isDischarged}" style="background:#fff5f5;padding:10px 12px;border-radius:8px;margin-bottom:12px;color:#c62828;font-size:13px;border-left:4px solid #c62828;">
+                        ⚠ Пациент выписан. Опись не выдана.
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-item"><div class="info-label">Пациент</div><div class="info-value" th:text="${inv.patient.fullName}">—</div></div>
+                        <div class="info-item"><div class="info-label">Номер истории</div><div class="info-value" th:text="${inv.patient.medicalCardNumber}">—</div></div>
+                        <div class="info-item"><div class="info-label">Склад</div><div class="info-value" th:text="${inv.storage?.name ?: 'Не размещено'}">—</div></div>
+                        <div class="info-item"><div class="info-label">Ячейка</div><div class="info-value" th:text="${inv.cell?.name ?: '—'}">—</div></div>
+                        <div class="info-item"><div class="info-label">Создал</div><div class="info-value" th:text="${inv.createdBy.fullName}">—</div></div>
+                        <div class="info-item"><div class="info-label">Дата создания</div><div class="info-value" th:text="${#temporals.format(inv.createdAt, 'dd.MM.yyyy HH:mm')}">—</div></div>
+                    </div>
+
+                    <h4 style="margin-bottom:8px;font-size:15px;">Перечень вещей:</h4>
+                    <table class="items-table">
+                        <thead>
+                        <tr>
+                            <th>Наименование</th>
+                            <th>Кол-во</th>
+                            <th>Описание</th>
+                            <th style="width:100px;">Фото</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="item : ${inv.items}">
+                            <td><strong th:text="${item.name}">—</strong></td>
+                            <td th:text="${item.quantity}">1</td>
+                            <td th:text="${item.description ?: '—'}">—</td>
+                            <td style="text-align:center;">
+                                <div th:if="${item.photoPath != null}" style="display:flex;align-items:center;gap:8px;">
+                                    <img th:src="@{'/photos/' + ${item.photoPath}}"
+                                         style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #ddd;"
+                                         alt="Миниатюра">
+                                    <button class="btn btn-outline btn-sm"
+                                            th:attr="onclick=|window.open('/photos/${item.photoPath}', '_blank')|"
+                                            title="Открыть фото"
+                                            style="padding:2px 6px;font-size:14px;">
+                                        🔍
+                                    </button>
+                                </div>
+                                <span th:unless="${item.photoPath != null}" style="color:#ccc;">—</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="action-buttons" th:if="${inv.status.name() != 'ISSUED'}">
+                        <button class="btn btn-primary btn-sm" th:if="${inv.status.name() == 'CREATED'}"
+                                th:attr="onclick=|openPlaceModal(${inv.id})|">📦 Разместить</button>
+                        <button class="btn btn-outline btn-sm" th:if="${inv.status.name() == 'PLACED' or inv.status.name() == 'MOVED'}"
+                                th:attr="onclick=|openMoveModal(${inv.id})|">📦 Переместить</button>
+                        <a th:href="@{'/api/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
+                        <button class="btn btn-outline btn-sm" th:attr="onclick=|printQrCode('${inv.id}')|">🖨 QR</button>
+                        <form th:action="@{'/storekeeper/issue/'+${inv.id}}" method="post" style="display:inline;"
+                              onsubmit="return confirm('Подтвердите выдачу описи №' + ${inv.id} + '?');">
+                            <button type="submit" class="btn btn-success btn-sm">✅ Выдать</button>
+                        </form>
+                    </div>
+
+                    <div th:if="${inv.status.name() == 'ISSUED'}" style="background:#fce4ec;padding:12px;border-radius:8px;color:#c62828;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <div>
+                            <strong>✅ Вещи выданы</strong>
+                            <span th:if="${inv.issuedAt != null}"> | <span th:text="${#temporals.format(inv.issuedAt, 'dd.MM.yyyy HH:mm')}"></span></span>
+                            <span th:if="${inv.issuedBy != null}"> | Выдал: <span th:text="${inv.issuedBy}"></span></span>
+                        </div>
+                        <a th:href="@{'/api/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:unless="${inventories != null && !inventories.isEmpty()}" style="text-align:center;padding:40px;color:#888;">
+            <p style="font-size:48px;">📋</p><p style="font-size:16px;">Нет описей</p>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно размещения -->
+<div id="place-modal" class="modal-overlay">
+    <div class="modal">
+        <h3>📦 Разместить на складе</h3>
+        <form th:action="@{/storekeeper/place}" method="post">
+            <input type="hidden" name="inventoryId" id="place-inventory-id">
+            <div class="form-group"><label>Склад</label><select name="storageId" id="place-storage" class="form-control" required onchange="loadCells(this.value,'place-cell')"><option value="">Загрузка...</option></select></div>
+            <div class="form-group"><label>Ячейка</label><select name="cellId" id="place-cell" class="form-control" required><option value="">Сначала выберите склад</option></select></div>
+            <div class="modal-buttons"><button type="button" class="btn btn-outline" onclick="closeModal('place-modal')">Отмена</button><button type="submit" class="btn btn-primary">Разместить</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно перемещения -->
+<div id="move-modal" class="modal-overlay">
+    <div class="modal">
+        <h3>📦 Переместить</h3>
+        <form th:action="@{/storekeeper/move}" method="post">
+            <input type="hidden" name="inventoryId" id="move-inventory-id">
+            <div class="form-group"><label>Склад</label><select name="storageId" id="move-storage" class="form-control" required onchange="loadCells(this.value,'move-cell')"><option value="">Загрузка...</option></select></div>
+            <div class="form-group"><label>Ячейка</label><select name="cellId" id="move-cell" class="form-control" required><option value="">Сначала выберите склад</option></select></div>
+            <div class="modal-buttons"><button type="button" class="btn btn-outline" onclick="closeModal('move-modal')">Отмена</button><button type="submit" class="btn btn-primary">Переместить</button></div>
+        </form>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script>
+    var scanMode = false;
+    var scanBuffer = '';
+    var scanTimeout = null;
+    var lastScanTime = 0;
+    var currentSort = 'date';
+
+    function toggleCard(header) {
+        var body = header.nextElementSibling;
+        var arrow = header.querySelector('.arrow');
+        if (!body || !arrow) return;
+        body.classList.toggle('active');
+        arrow.style.transform = body.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    function openPlaceModal(id) { document.getElementById('place-inventory-id').value = id; document.getElementById('place-modal').classList.add('active'); loadStorages('place-storage'); }
+    function openMoveModal(id) { document.getElementById('move-inventory-id').value = id; document.getElementById('move-modal').classList.add('active'); loadStorages('move-storage'); }
+    function closeModal(id) { var m = document.getElementById(id); if (m) m.classList.remove('active'); }
+
+    function loadStorages(selectId) {
+        var s = document.getElementById(selectId);
+        if (!s) return;
+        s.innerHTML = '<option value="">Загрузка...</option>';
+        fetch('/api/storages')
+            .then(function(r){return r.json()})
+            .then(function(d){
+                s.innerHTML = '<option value="">Выберите склад</option>';
+                if (Array.isArray(d) && d.length) {
+                    d.sort(function(a, b) {
+                        return a.name.localeCompare(b.name, 'ru');
+                    });
+                    d.forEach(function(x){
+                        s.innerHTML += '<option value="'+x.id+'">'+escapeHtml(x.name)+'</option>';
+                    });
+                }
+            })
+            .catch(function(){s.innerHTML='<option value="">Ошибка</option>'});
+    }
+
+    function loadCells(storageId, selectId) {
+        var s = document.getElementById(selectId);
+        if (!s) return;
+        if (!storageId) {
+            s.innerHTML = '<option value="">Сначала выберите склад</option>';
+            return;
+        }
+        s.innerHTML = '<option value="">Загрузка...</option>';
+        fetch('/api/storage/'+storageId+'/free-cells')
+            .then(function(r){return r.json()})
+            .then(function(d){
+                s.innerHTML = '<option value="">Выберите ячейку</option>';
+                if (Array.isArray(d) && d.length) {
+                    d.sort(function(a, b) {
+                        return a.name.localeCompare(b.name, 'ru');
+                    });
+                    d.forEach(function(x){
+                        s.innerHTML += '<option value="'+x.id+'">'+escapeHtml(x.name)+'</option>';
+                    });
+                } else {
+                    s.innerHTML += '<option value="" disabled>Нет свободных ячеек</option>';
+                }
+            })
+            .catch(function(){s.innerHTML='<option value="">Ошибка</option>'});
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function printQrCode(data) {
+        fetch('/api/qrcode?data='+encodeURIComponent(data)).then(function(r){return r.text()}).then(function(b){
+            var w = window.open('','_blank'); if (!w) { alert('Разрешите всплывающие окна'); return; }
+            w.document.write('<img src="'+b+'" style="width:200px;"><p>'+data+'</p><script>window.onload=function(){window.print();}<\/script>');
+        });
+    }
+
+    function sortInventories(sortType) {
+        currentSort = sortType;
+
+        var buttons = document.querySelectorAll('.sort-btn');
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].classList.remove('active');
+        }
+        document.getElementById('sort-' + sortType).classList.add('active');
+
+        var container = document.getElementById('inventories-container');
+        if (!container) return;
+
+        var cards = container.querySelectorAll('.inventory-card');
+        if (!cards || cards.length === 0) return;
+
+        var cardsArray = [];
+        for (var i = 0; i < cards.length; i++) {
+            cardsArray.push(cards[i]);
+        }
+
+        cardsArray.sort(function(a, b) {
+            if (sortType === 'id') {
+                var idA = parseInt(a.getAttribute('data-id')) || 0;
+                var idB = parseInt(b.getAttribute('data-id')) || 0;
+                return idA - idB;
+            } else {
+                var dateA = a.getAttribute('data-date') || '';
+                var dateB = b.getAttribute('data-date') || '';
+                return dateB.localeCompare(dateA);
+            }
+        });
+
+        container.innerHTML = '';
+        for (var j = 0; j < cardsArray.length; j++) {
+            container.appendChild(cardsArray[j]);
+        }
+    }
+
+    function searchInventory() {
+        var q = document.getElementById('search-inventory').value.trim();
+        var cards = document.querySelectorAll('.inventory-card');
+        var clearBtn = document.getElementById('clear-btn');
+        if (!q) { clearSearch(); return; }
+        clearBtn.style.display = 'inline-block';
+        var found = false;
+        cards.forEach(function(c) {
+            if (c.getAttribute('data-id') === q) {
+                c.style.display = '';
+                c.classList.add('highlight');
+                var body = c.querySelector('.inventory-body');
+                var arrow = c.querySelector('.arrow');
+                if (body) body.classList.add('active');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+                c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                found = true;
+            } else {
+                c.style.display = 'none';
+                c.classList.remove('highlight');
+            }
+        });
+        if (!found) { alert('Опись №' + q + ' не найдена'); clearSearch(); }
+        if (scanMode) toggleScanMode();
+    }
+
+    function searchByMedicalCard() {
+        var medicalCardNumber = prompt('Введите номер истории болезни для поиска:');
+        if (!medicalCardNumber || !medicalCardNumber.trim()) return;
+        var searchTerm = medicalCardNumber.trim().toLowerCase();
+        var cards = document.querySelectorAll('.inventory-card');
+        var clearBtn = document.getElementById('clear-btn');
+        var found = false;
+        clearBtn.style.display = 'inline-block';
+        cards.forEach(function(c) {
+            var medCard = c.getAttribute('data-card');
+            if (medCard && medCard.toLowerCase() === searchTerm) {
+                c.style.display = '';
+                c.classList.add('highlight');
+                var body = c.querySelector('.inventory-body');
+                var arrow = c.querySelector('.arrow');
+                if (body) body.classList.add('active');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+                c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                found = true;
+                document.getElementById('search-inventory').value = '';
+            } else {
+                c.style.display = 'none';
+                c.classList.remove('highlight');
+            }
+        });
+        if (!found) { alert('Опись с историей №' + medicalCardNumber + ' не найдена'); clearSearch(); }
+    }
+
+    function clearSearch() {
+        document.getElementById('search-inventory').value = '';
+        document.getElementById('clear-btn').style.display = 'none';
+        document.querySelectorAll('.inventory-card').forEach(function(c) {
+            c.style.display = '';
+            c.classList.remove('highlight');
+        });
+        document.querySelectorAll('.inventory-body').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.arrow').forEach(function(a) { a.style.transform = 'rotate(0deg)'; });
+    }
+
+
+    function setupScanner() {
+        var input = document.getElementById('search-inventory');
+        document.addEventListener('keydown', function(e) {
+            if (!scanMode) return;
+            if (document.activeElement !== input) input.focus();
+            if (e.key === 'Enter') {
+                if (scanBuffer.length > 0) {
+                    e.preventDefault(); e.stopPropagation();
+                    input.value = extractNumber(scanBuffer); scanBuffer = '';
+                    input.style.backgroundColor = '#e8f5e9';
+                    setTimeout(function() { input.style.backgroundColor = ''; }, 200);
+                    setTimeout(searchInventory, 50);
+                }
+                if (scanTimeout) clearTimeout(scanTimeout);
+                return;
+            }
+            if (e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); return; }
+            if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault(); e.stopPropagation();
+                var now = Date.now();
+                if (now - lastScanTime > 100) scanBuffer = '';
+                scanBuffer += e.key; lastScanTime = now;
+                if (scanTimeout) clearTimeout(scanTimeout);
+                scanTimeout = setTimeout(function() {
+                    if (scanBuffer.length > 0) {
+                        input.value = extractNumber(scanBuffer); scanBuffer = '';
+                        input.style.backgroundColor = '#e8f5e9';
+                        setTimeout(function() { input.style.backgroundColor = ''; }, 200);
+                        setTimeout(searchInventory, 50);
+                    }
+                }, 80);
+            }
+        });
+        input.addEventListener('blur', function() { if (scanMode) setTimeout(function() { input.focus(); }, 5); });
+        input.addEventListener('paste', function(e) {
+            if (!scanMode) return;
+            e.preventDefault();
+            var pastedData = (e.clipboardData || window.clipboardData).getData('text');
+            if (pastedData && pastedData.trim()) {
+                input.value = extractNumber(pastedData);
+                setTimeout(searchInventory, 50);
+            }
+        });
+    }
+
+    function extractNumber(data) {
+        var cleaned = data.trim();
+        var match = cleaned.match(/(?:INV-|inv-|№)?(\d+)/);
+        return match ? match[1] : cleaned;
+    }
+
+    function toggleScanMode() {
+        scanMode = !scanMode;
+        var input = document.getElementById('search-inventory');
+        var btn = document.getElementById('scan-btn');
+        var hint = document.getElementById('scan-hint');
+        if (scanMode) {
+            btn.classList.add('active');
+            hint.textContent = '🔴 Режим сканирования. Отсканируйте QR-код.';
+            hint.className = 'scan-hint ready';
+            input.value = ''; input.focus();
+            input.placeholder = 'Ожидание сканера...';
+            input.classList.add('scan-active');
+            scanBuffer = '';
+            if (scanTimeout) clearTimeout(scanTimeout);
+        } else {
+            btn.classList.remove('active');
+            hint.textContent = ''; hint.className = 'scan-hint';
+            input.placeholder = '№ описи или отсканируйте QR-код...';
+            input.classList.remove('scan-active');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('sort-date').classList.add('active');
+        loadStorages('place-storage');
+        loadStorages('move-storage');
+        setupScanner();
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(function(o) {
+        o.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !scanMode) {
+            document.querySelectorAll('.modal-overlay.active').forEach(function(m) { m.classList.remove('active'); });
+        }
+    });
+</script>
+</body>
+</html>
