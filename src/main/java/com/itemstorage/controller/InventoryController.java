@@ -56,14 +56,10 @@ public class InventoryController {
     public String downloadInventory(@PathVariable Long id, Model model) {
         try {
             Inventory inventory = inventoryService.getInventoryById(id);
-
             String qrCode = qrCodeService.generateQrCodeBase64(String.valueOf(id));
-
             model.addAttribute("inventory", inventory);
             model.addAttribute("qrCode", qrCode);
-
             log.info("Генерация PDF для описи №{}, QR содержит только ID: {}", id, id);
-
             return "inventory-print";
         } catch (Exception e) {
             log.error("Ошибка при скачивании описи {}: ", id, e);

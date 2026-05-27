@@ -8,6 +8,53 @@
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-overlay.active { display: flex; }
         .modal { background: white; border-radius: 12px; padding: 25px; width: 90%; max-width: 450px; }
+        .modal h3 { margin-top: 0; }
+        .green { color: green; font-weight: bold; }
+        .red { color: red; font-weight: bold; }
+        .storage-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid #287aa3;
+        }
+        .storage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .storage-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a3a4a;
+        }
+        .storage-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .type-reception { background: #fff3e0; color: #e65100; }
+        .type-longterm { background: #e8f5e9; color: #2e7d32; }
+        .storage-stats {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -23,36 +70,57 @@
             <button onclick="openModal('add-storage-modal')" class="btn btn-primary">+ Добавить склад</button>
         </div>
 
-        <div class="card" th:if="${storages != null && !storages.isEmpty()}">
-            <table>
-                <thead><tr><th>ID</th><th>Наименование</th><th>Тип</th><th>Ячеек</th><th>Свободно</th><th>Действия</th></tr></thead>
-                <tbody>
-                <tr th:each="s : ${storages}">
-                    <td th:text="${s.id}">1</td>
-                    <td><strong th:text="${s.name}">—</strong></td>
-                    <td th:text="${s.storageType.displayName}">—</td>
-                    <td th:text="${s.cells != null ? #lists.size(s.cells) : 0}">0</td>
-                    <td th:text="${s.cells != null ? s.cells.?[!isOccupied].size() : 0}">0</td>
-                    <td>
-                        <button class="btn btn-outline btn-sm" th:attr="onclick=|openRenameModal(${s.id},'${s.name}')|">✏</button>
-                        <a th:href="@{'/admin/cells?storageId='+${s.id}}" class="btn btn-outline btn-sm">📦</a>
-                        <form th:action="@{'/admin/storages/'+${s.id}+'/delete'}" method="post" style="display:inline;" onsubmit="return confirm('Удалить склад?');">
-                            <button type="submit" class="btn btn-danger btn-sm">🗑</button>
+        <div th:if="${storages != null && !storages.isEmpty()}">
+            <div th:each="s : ${storages}" class="storage-card">
+                <div class="storage-header">
+                    <div>
+                        <span class="storage-name" th:text="${s.name}">—</span>
+                        <span class="storage-type"
+                              th:classappend="${s.storageType.name() == 'RECEPTION' ? 'type-reception' : 'type-longterm'}"
+                              th:text="${s.storageType.displayName}">—</span>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-outline btn-sm" th:attr="onclick=|openRenameModal(${s.id},'${s.name}')|">✏ Переименовать</button>
+                        <a th:href="@{'/admin/cells?storageId='+${s.id}}" class="btn btn-outline btn-sm">📦 Просмотр ячеек</a>
+                        <button class="btn btn-success btn-sm" th:attr="onclick=|openAddCellModal(${s.id},'${s.name}')|">+ Добавить ячейку</button>
+                        <form th:action="@{'/admin/storages/'+${s.id}+'/delete'}" method="post" style="display:inline;"
+                              onsubmit="return confirm('Удалить склад «' + '${s.name}' + '»? Все ячейки на складе будут также удалены.');">
+                            <button type="submit" class="btn btn-danger btn-sm">🗑 Удалить</button>
                         </form>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+                    </div>
+                </div>
+                <div class="storage-stats">
+                    <span>📦 Ячеек: <strong th:text="${s.cells != null ? #lists.size(s.cells) : 0}">0</strong></span>
+                    <span style="margin-left:15px;">🟢 Свободно: <strong th:text="${s.cells != null ? s.cells.?[!isOccupied].size() : 0}">0</strong></span>
+                    <span style="margin-left:15px;">🔴 Занято: <strong th:text="${s.cells != null ? s.cells.?[isOccupied].size() : 0}">0</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <div th:unless="${storages != null && !storages.isEmpty()}" style="text-align:center;padding:40px;color:#888;">
+            <p style="font-size:48px;">🏠</p>
+            <p>Нет складов. Создайте первый склад.</p>
         </div>
     </div>
 </div>
 
+<!-- Модальное окно: Добавить склад -->
 <div id="add-storage-modal" class="modal-overlay">
     <div class="modal">
         <h3>Добавить склад</h3>
         <form th:action="@{/admin/storages/create}" method="post">
-            <div class="form-group"><label>Название</label><input type="text" name="name" class="form-control" required></div>
-            <div class="form-group"><label>Тип</label><select name="storageType" class="form-control" required><option value="">—</option><option value="RECEPTION">Приёмное отделение</option><option value="LONG_TERM">Долговременный</option></select></div>
+            <div class="form-group">
+                <label>Название склада *</label>
+                <input type="text" name="name" class="form-control" required placeholder="Например: Склад приёмного отделения">
+            </div>
+            <div class="form-group">
+                <label>Тип склада *</label>
+                <select name="storageType" class="form-control" required>
+                    <option value="">Выберите тип</option>
+                    <option value="RECEPTION">Приёмное отделение</option>
+                    <option value="LONG_TERM">Долговременное хранение</option>
+                </select>
+            </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:15px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('add-storage-modal')">Отмена</button>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -61,11 +129,15 @@
     </div>
 </div>
 
+<!-- Модальное окно: Переименовать склад -->
 <div id="rename-storage-modal" class="modal-overlay">
     <div class="modal">
         <h3>Переименовать склад</h3>
         <form id="rename-storage-form" method="post">
-            <div class="form-group"><label>Новое название</label><input type="text" id="rename-storage-name" name="name" class="form-control" required></div>
+            <div class="form-group">
+                <label>Новое название</label>
+                <input type="text" id="rename-storage-name" name="name" class="form-control" required>
+            </div>
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:15px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('rename-storage-modal')">Отмена</button>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -74,13 +146,66 @@
     </div>
 </div>
 
+<!-- Модальное окно: Добавить ячейку -->
+<div id="add-cell-modal" class="modal-overlay">
+    <div class="modal">
+        <h3>Добавить ячейку</h3>
+        <form id="add-cell-form" method="post" th:action="@{/admin/cells/create}">
+            <input type="hidden" id="add-cell-storage-id" name="storageId">
+            <div class="form-group">
+                <label>Название ячейки *</label>
+                <input type="text" name="name" class="form-control" required placeholder="Например: А-01, Стеллаж 1, Полка 2">
+            </div>
+            <div class="form-group" id="storage-info" style="background:#e8f2f8;padding:10px;border-radius:8px;font-size:13px;">
+                <span>📦 Склад: <strong id="selected-storage-name">—</strong></span>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:15px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('add-cell-modal')">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script th:src="@{/js/app.js}"></script>
 <script>
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
     function openRenameModal(id, name) {
         document.getElementById('rename-storage-form').action = '/admin/storages/' + id + '/rename';
         document.getElementById('rename-storage-name').value = name;
         openModal('rename-storage-modal');
     }
+
+    function openAddCellModal(storageId, storageName) {
+        document.getElementById('add-cell-storage-id').value = storageId;
+        document.getElementById('selected-storage-name').textContent = storageName;
+        openModal('add-cell-modal');
+    }
+
+    // Закрытие модальных окон при клике на фон
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+
+    // Закрытие по Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(function(modal) {
+                modal.classList.remove('active');
+            });
+        }
+    });
 </script>
 </body>
 </html>

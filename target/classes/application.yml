@@ -1,11 +1,5 @@
 server:
   port: 8080
-  ssl:
-    enabled: true
-    key-store: classpath:keystore.p12
-    key-store-password: secret
-    key-store-type: PKCS12
-    key-alias: tomcat
 
 spring:
   datasource:
@@ -31,6 +25,10 @@ spring:
       - cellsByStorage
       - patients
       - dictionaryItems
+      - inventories
+      - activeInventories
+      - notIssuedInventories
+      - activeForDischarged
     caffeine:
       spec: maximumSize=100,expireAfterWrite=300s
 
@@ -50,6 +48,7 @@ logging:
   level:
     com.itemstorage: DEBUG
     org.springframework.web: INFO
+    org.springframework.cache: DEBUG
 
 management:
   endpoints:

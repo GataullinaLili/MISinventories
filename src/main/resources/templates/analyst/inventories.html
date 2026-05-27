@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Просмотр описей — АРМ.Вещи</title>
+    <title>Просмотр описей — АРМ.Вещи (Аналитик)</title>
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <style>
         .inventory-card {
@@ -21,6 +21,7 @@
             background: #f8f9fa;
             border-bottom: 1px solid #e9ecef;
             cursor: pointer;
+            user-select: none;
             flex-wrap: wrap;
             gap: 10px;
         }
@@ -39,42 +40,41 @@
         .info-value { font-size: 14px; font-weight: 600; color: #212529; }
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
         .items-table th { background: #287aa3; color: white; padding: 8px 12px; text-align: left; font-size: 12px; }
-        .items-table td { padding: 8px 12px; border-bottom: 1px solid #e9ecef; font-size: 13px; }
-        .status-badge {
-            display: inline-block; padding: 4px 12px; border-radius: 20px;
-            font-size: 12px; font-weight: 600;
-        }
+        .items-table td { padding: 8px 12px; border-bottom: 1px solid #e9ecef; font-size: 13px; vertical-align: middle; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
         .status-created { background: #fff3e0; color: #e65100; }
         .status-placed { background: #e8f5e9; color: #2e7d32; }
         .status-moved { background: #e3f2fd; color: #287aa3; }
         .status-issued { background: #fce4ec; color: #c62828; }
+
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         .search-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 300px; flex-wrap: wrap; }
         .search-input-wrapper { position: relative; flex: 1; min-width: 200px; }
         .search-input-wrapper input {
             width: 100%; padding: 10px 12px;
             border: 2px solid #ddd; border-radius: 8px; font-size: 14px;
+            transition: all 0.3s; box-sizing: border-box;
         }
-        .search-input-wrapper input:focus { outline: none; border-color: #287aa3; }
-        .filter-toggle { display: flex; align-items: center; gap: 8px; }
+        .search-input-wrapper input:focus {
+            outline: none; border-color: #287aa3;
+            box-shadow: 0 0 0 3px rgba(40,122,163,0.1);
+        }
+        .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .filter-toggle { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .filter-toggle span { font-size: 13px; color: #6c757d; }
         .toggle-switch { position: relative; display: inline-block; width: 44px; height: 22px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
         .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 22px; }
-        .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; }
-        input:checked + .toggle-slider { background-color: #287aa3; }
+        .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: #1a3a4a; }
         input:checked + .toggle-slider:before { transform: translateX(22px); }
-        .item-photo { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; }
+
+        .item-photo { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; transition: transform 0.2s; }
+        .item-photo:hover { transform: scale(1.1); }
         .no-results { text-align: center; padding: 60px; color: #888; }
-        .print-view-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 4px 10px;
-            font-size: 11px;
-            cursor: pointer;
-        }
-        .print-view-btn:hover { background: #5a6268; }
+        .alert-badge { background: #fff5f5; color: #c62828; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .btn-secondary { background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; padding: 10px 18px; transition: background 0.3s; }
+        .btn-secondary:hover { background: #5a6268; }
     </style>
 </head>
 <body>
@@ -82,48 +82,61 @@
 <div class="main-content">
     <div th:replace="~{fragments/topbar :: topbar}"></div>
     <div class="content">
+        <!-- Верхняя панель -->
         <div class="top-bar">
-            <h1 class="page-title" style="margin:0;font-size:22px;">📋 Просмотр описей</h1>
-            <div class="filter-toggle">
-                <span>Активные</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="showAllToggle" onchange="toggleShowAll()">
-                    <span class="toggle-slider"></span>
-                </label>
-                <span>Все</span>
+            <h1 class="page-title" style="margin:0;font-size:22px;">📋 Просмотр описей (Аналитик)</h1>
+            <div class="controls-row">
+                <div class="filter-toggle">
+                    <span>Активные</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="showAllToggle" th:checked="${showAll}"
+                               onchange="window.location.href='/analyst/inventories?showAll=' + this.checked">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Все</span>
+                </div>
             </div>
         </div>
 
+        <!-- Поиск (без QR сканера для аналитика) -->
         <div style="margin-bottom: 20px;">
             <div class="search-row">
                 <div class="search-input-wrapper">
-                    <input type="text" id="search-input" placeholder="Поиск по № описи, ФИО пациента или номеру истории..." autocomplete="off">
+                    <input type="text" id="search-input" placeholder="Поиск по № описи, ФИО пациента или номеру истории болезни..." autocomplete="off">
                 </div>
                 <button type="button" onclick="searchInventories()" class="btn btn-primary">🔍 Найти</button>
-                <button type="button" onclick="clearSearch()" class="btn btn-outline" id="clear-btn" style="display:none;">✕ Очистить</button>
+                <button type="button" onclick="searchByMedicalCard()" class="btn btn-secondary">📋 Поиск по истории</button>
+                <button type="button" onclick="clearSearch()" class="btn btn-outline btn-sm" id="clear-btn" style="display:none;">✕ Очистить</button>
+            </div>
+            <div style="font-size:12px; color:#888; margin-top:5px;">
+                💡 Для поиска введите номер описи, ФИО пациента или номер истории болезни
             </div>
         </div>
 
+        <!-- Сообщение об ошибке -->
         <div th:if="${error}" style="background:#fce4ec;padding:12px;border-radius:8px;margin-bottom:15px;color:#c62828;" th:text="${error}"></div>
 
+        <!-- Список описей -->
         <div id="inventories-container">
             <div th:each="inv : ${inventories}" class="inventory-card"
-                 th:attr="data-id=${inv.id},data-date=${inv.createdAt},data-card=${inv.patient.medicalCardNumber},data-status=${inv.status.name()}">
+                 th:attr="data-id=${inv.id},data-date=${inv.createdAt},data-card=${inv.patient.medicalCardNumber}">
 
                 <div class="inventory-header" onclick="toggleCard(this)">
                     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <span class="inventory-id">Опись №<span th:text="${inv.id}">1</span></span>
                         <span class="status-badge"
-                              th:classappend="${inv.status.name() == 'CREATED' ? 'status-created' : (inv.status.name() == 'MOVED' ? 'status-moved' : (inv.status.name() == 'PLACED' ? 'status-placed' : 'status-issued'))}"
+                              th:classappend="${inv.status.name() == 'CREATED' ? 'status-created' :
+                                               (inv.status.name() == 'MOVED' ? 'status-moved' :
+                                               (inv.status.name() == 'PLACED' ? 'status-placed' : 'status-issued'))}"
                               th:text="${inv.status.displayName}">Создана</span>
-                        <span th:if="${inv.patient.isDischarged}" style="background:#fff5f5;color:#c62828;padding:2px 8px;border-radius:10px;font-size:11px;">⚠ ВЫПИСАН</span>
+                        <span th:if="${inv.patient.isDischarged}" class="alert-badge">⚠ ВЫПИСАН</span>
                         <span style="font-size:13px;color:#555;" th:text="${inv.patient.fullName}"></span>
                     </div>
                     <span style="font-size:18px;transition:transform 0.3s;" class="arrow">▼</span>
                 </div>
 
                 <div class="inventory-body">
-                    <div th:if="${inv.patient.isDischarged}" style="background:#fff5f5;padding:10px;border-radius:8px;margin-bottom:12px;color:#c62828;font-size:13px;border-left:4px solid #c62828;">
+                    <div th:if="${inv.patient.isDischarged}" style="background:#fff5f5;padding:10px 12px;border-radius:8px;margin-bottom:12px;color:#c62828;font-size:13px;border-left:4px solid #c62828;">
                         ⚠ Пациент выписан. Опись не выдана.
                     </div>
 
@@ -145,7 +158,7 @@
                             <th>Наименование</th>
                             <th>Кол-во</th>
                             <th>Описание</th>
-                            <th style="width:80px;">Фото</th>
+                            <th style="width:100px;">Фото</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -154,68 +167,51 @@
                             <td th:text="${item.quantity}">1</td>
                             <td th:text="${item.description ?: '—'}">—</td>
                             <td style="text-align:center;">
-                                <div th:if="${item.photoPath != null}">
+                                <div th:if="${item.photoPath != null}" style="display:flex;align-items:center;gap:8px;">
                                     <img th:src="@{'/photos/' + ${item.photoPath}}"
-                                         class="item-photo"
-                                         th:attr="onclick=|window.open('/photos/${item.photoPath}', '_blank')|"
-                                         alt="Фото">
+                                         style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #ddd;"
+                                         alt="Миниатюра">
+                                    <button class="btn btn-outline btn-sm"
+                                            th:attr="onclick=|window.open('/photos/${item.photoPath}', '_blank')|"
+                                            title="Открыть фото"
+                                            style="padding:2px 6px;font-size:14px;">
+                                        🔍
+                                    </button>
                                 </div>
                                 <span th:unless="${item.photoPath != null}" style="color:#ccc;">—</span>
                             </td>
                         </tr>
                         </tbody>
                     </table>
+
+                    <!-- Только кнопка печати (без действий) -->
+                    <div style="margin-top:10px;">
+                        <a th:href="@{'/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Пустое состояние -->
         <div th:unless="${inventories != null && !inventories.isEmpty()}" class="no-results">
             <p style="font-size:48px;">📋</p>
-            <p>Нет описей</p>
+            <p>Нет описей для отображения</p>
+            <p style="font-size:13px;margin-top:10px;">
+                <span th:if="${showAll}">Показаны все описи. Описей нет.</span>
+                <span th:unless="${showAll}">Показаны только активные описи. Нет описей со статусом «Создана», «Размещена» или «Перемещена».</span>
+            </p>
         </div>
     </div>
 </div>
 
 <script th:src="@{/js/app.js}"></script>
 <script>
-    var currentShowAll = false;
-
-    document.addEventListener('DOMContentLoaded', function() {
-        loadInventories();
-    });
-
     function toggleCard(header) {
         var body = header.nextElementSibling;
         var arrow = header.querySelector('.arrow');
-        if (body && arrow) {
-            body.classList.toggle('active');
-            arrow.style.transform = body.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-    }
-
-    function toggleShowAll() {
-        currentShowAll = document.getElementById('showAllToggle').checked;
-        loadInventories();
-    }
-
-    function loadInventories() {
-        var container = document.getElementById('inventories-container');
-        container.innerHTML = '<div class="no-results"><p>⏳ Загрузка...</p></div>';
-
-        var url = currentShowAll ? '/api/inventory/all' : '/api/inventory/all';
-        fetch(url)
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                if (data && data.length > 0) {
-                    renderInventories(data);
-                } else {
-                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">📋</p><p>Нет описей</p></div>';
-                }
-            })
-            .catch(function(err) {
-                console.error('Ошибка загрузки:', err);
-                container.innerHTML = '<div class="no-results"><p>Ошибка загрузки данных</p></div>';
-            });
+        if (!body || !arrow) return;
+        body.classList.toggle('active');
+        arrow.style.transform = body.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
     }
 
     function searchInventories() {
@@ -223,8 +219,7 @@
         var clearBtn = document.getElementById('clear-btn');
 
         if (!query) {
-            loadInventories();
-            clearBtn.style.display = 'none';
+            clearSearch();
             return;
         }
 
@@ -234,30 +229,61 @@
         container.innerHTML = '<div class="no-results"><p>⏳ Поиск...</p></div>';
 
         fetch('/api/inventory/search?query=' + encodeURIComponent(query))
-            .then(function(res) { return res.json(); })
+            .then(function(res) {
+                if (!res.ok) throw new Error('Ошибка поиска');
+                return res.json();
+            })
             .then(function(data) {
                 if (data && data.length > 0) {
                     renderInventories(data);
                 } else {
-                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>Ничего не найдено</p></div>';
+                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>Ничего не найдено по запросу "' + escapeHtml(query) + '"</p></div>';
                 }
             })
             .catch(function(err) {
                 console.error('Ошибка поиска:', err);
-                container.innerHTML = '<div class="no-results"><p>Ошибка поиска</p></div>';
+                container.innerHTML = '<div class="no-results"><p>❌ Ошибка поиска</p></div>';
+            });
+    }
+
+    function searchByMedicalCard() {
+        var medicalCardNumber = prompt('Введите номер истории болезни для поиска:');
+        if (!medicalCardNumber || !medicalCardNumber.trim()) return;
+
+        var container = document.getElementById('inventories-container');
+        container.innerHTML = '<div class="no-results"><p>⏳ Поиск...</p></div>';
+
+        fetch('/api/inventory/search?query=' + encodeURIComponent(medicalCardNumber.trim()))
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data && data.length > 0) {
+                    renderInventories(data);
+                    document.getElementById('clear-btn').style.display = 'inline-block';
+                } else {
+                    container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>Пациент с историей №' + escapeHtml(medicalCardNumber) + ' не найден</p></div>';
+                }
+            })
+            .catch(function(err) {
+                console.error('Ошибка поиска:', err);
+                container.innerHTML = '<div class="no-results"><p>❌ Ошибка поиска</p></div>';
             });
     }
 
     function clearSearch() {
         document.getElementById('search-input').value = '';
         document.getElementById('clear-btn').style.display = 'none';
-        loadInventories();
+        window.location.href = '/analyst/inventories?showAll=' + (document.getElementById('showAllToggle').checked);
     }
 
     function renderInventories(inventories) {
         var container = document.getElementById('inventories-container');
-        var html = '';
 
+        if (!inventories || inventories.length === 0) {
+            container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>Ничего не найдено</p></div>';
+            return;
+        }
+
+        var html = '';
         for (var i = 0; i < inventories.length; i++) {
             var inv = inventories[i];
             var statusClass = '';
@@ -288,7 +314,7 @@
                 '<span class="status-badge ' + statusClass + '">' + statusDisplay + '</span>';
 
             if (isDischarged) {
-                html += '<span style="background:#fff5f5;color:#c62828;padding:2px 8px;border-radius:10px;font-size:11px;">⚠ ВЫПИСАН</span>';
+                html += '<span class="alert-badge">⚠ ВЫПИСАН</span>';
             }
 
             html += '<span style="font-size:13px;color:#555;">' + patientName + '</span>' +
@@ -298,7 +324,7 @@
                 '<div class="inventory-body">';
 
             if (isDischarged) {
-                html += '<div style="background:#fff5f5;padding:10px;border-radius:8px;margin-bottom:12px;color:#c62828;font-size:13px;border-left:4px solid #c62828;">' +
+                html += '<div style="background:#fff5f5;padding:10px 12px;border-radius:8px;margin-bottom:12px;color:#c62828;font-size:13px;border-left:4px solid #c62828;">' +
                     '⚠ Пациент выписан. Опись не выдана.</div>';
             }
 
@@ -312,7 +338,7 @@
 
             if (issuedAt) {
                 html += '<div class="info-item"><div class="info-label">Дата выдачи</div><div class="info-value">' + issuedAt + '</div></div>' +
-                    '<div class="info-item"><div class="info-label">Выдал</div><div class="info-value">' + issuedBy + '</div></div>';
+                    '<div class="info-item"><div class="info-label">Выдал</div><div class="info-value">' + (issuedBy || '—') + '</div></div>';
             }
 
             html += '</div>' +
@@ -329,7 +355,10 @@
                     '<td style="text-align:center;">';
 
                 if (item.photoPath) {
-                    html += '<img src="/photos/' + encodeURIComponent(item.photoPath) + '" style="width:50px;height:50px;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="window.open(\'/photos/' + encodeURIComponent(item.photoPath) + '\', \'_blank\')" alt="Фото">';
+                    html += '<div style="display:flex;align-items:center;gap:8px;">' +
+                        '<img src="/photos/' + encodeURIComponent(item.photoPath) + '" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" alt="Фото">' +
+                        '<button class="btn btn-outline btn-sm" onclick="window.open(\'/photos/' + encodeURIComponent(item.photoPath) + '\', \'_blank\')" style="padding:2px 6px;font-size:14px;">🔍</button>' +
+                        '</div>';
                 } else {
                     html += '<span style="color:#ccc;">—</span>';
                 }
@@ -337,6 +366,9 @@
             }
 
             html += '</tbody></table>' +
+                '<div style="margin-top:10px;">' +
+                '<a href="/inventory/' + inv.id + '/download" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>' +
+                '</div>' +
                 '</div></div>';
         }
 
@@ -353,6 +385,7 @@
         });
     }
 
+    // Поиск по Enter
     document.getElementById('search-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') searchInventories();
     });

@@ -44,9 +44,6 @@ public class StorageService {
         Storage storage = storageRepository.findById(storageId)
                 .orElseThrow(() -> new RuntimeException("Склад не найден"));
 
-        if (storage.getStorageType() == StorageType.RECEPTION) {
-            throw new RuntimeException("Нельзя создавать ячейки на складе приёмного отделения");
-        }
 
         StorageCell cell = new StorageCell();
         cell.setName(name);

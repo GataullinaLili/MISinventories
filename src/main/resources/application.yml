@@ -25,6 +25,10 @@ spring:
       - cellsByStorage
       - patients
       - dictionaryItems
+      - inventories
+      - activeInventories
+      - notIssuedInventories
+      - activeForDischarged
     caffeine:
       spec: maximumSize=100,expireAfterWrite=300s
 
@@ -44,6 +48,7 @@ logging:
   level:
     com.itemstorage: DEBUG
     org.springframework.web: INFO
+    org.springframework.cache: DEBUG
 
 management:
   endpoints:

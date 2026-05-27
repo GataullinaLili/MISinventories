@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Опись вещей № <span th:text="${inventory.id}"></span></title>
+    <title>Опись вещей </title>
     <style>
         body { font-family: Arial, sans-serif; margin: 30px; }
         .header { text-align: center; margin-bottom: 20px; }
@@ -40,7 +40,11 @@
 
 <table>
     <thead>
-    <tr><th>Наименование</th><th>Кол-во</th><th>Описание</th></tr>
+    <tr>
+        <th>Наименование</th>
+        <th>Кол-во</th>
+        <th>Описание</th>
+    </tr>
     </thead>
     <tbody>
     <tr th:each="item : ${inventory.items}">
@@ -71,17 +75,12 @@
 
 <script th:inline="javascript">
     /*<![CDATA[*/
-    // Номер описи - только чистое число
     var inventoryId = /*[[${inventory.id}]]*/ null;
     var qrCodeData = /*[[${qrCode}]]*/ null;
 
-    // Если QR код передан с сервера - используем его
     if (qrCodeData && qrCodeData !== '') {
         document.getElementById('qr-image').src = qrCodeData;
-    }
-    // Иначе генерируем через API
-    else if (inventoryId) {
-        // ИЗМЕНЕНО: правильный URL API (было /api/qrcode/generate, стало /api/qrcode)
+    } else if (inventoryId) {
         var cleanId = inventoryId.toString().replace(/[^0-9]/g, '');
         var apiUrl = '/api/qrcode?data=' + encodeURIComponent(cleanId);
 
@@ -95,21 +94,9 @@
             })
             .catch(function(error) {
                 console.error('Ошибка генерации QR:', error);
-                var img = document.getElementById('qr-image');
-                if (img) {
-                    img.alt = 'QR код: ' + cleanId;
-                    img.style.display = 'none';
-                    var container = document.querySelector('.qr');
-                    if (container) {
-                        var text = document.createElement('div');
-                        text.innerHTML = '<div style="padding:10px;">Номер описи: <strong>' + cleanId + '</strong></div>';
-                        container.appendChild(text);
-                    }
-                }
             });
     }
 
-    // Автоматическая печать при загрузке
     window.onload = function() {
         setTimeout(function() {
             window.print();

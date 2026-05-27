@@ -228,7 +228,7 @@
                                 th:attr="onclick=|openPlaceModal(${inv.id})|">📦 Разместить</button>
                         <button class="btn btn-outline btn-sm" th:if="${inv.status.name() == 'PLACED' or inv.status.name() == 'MOVED'}"
                                 th:attr="onclick=|openMoveModal(${inv.id})|">📦 Переместить</button>
-                        <a th:href="@{'/api/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
+                        <a th:href="@{'/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
                         <button class="btn btn-outline btn-sm" th:attr="onclick=|printQrCode('${inv.id}')|">🖨 QR</button>
                         <form th:action="@{'/storekeeper/issue/'+${inv.id}}" method="post" style="display:inline;"
                               onsubmit="return confirm('Подтвердите выдачу описи №' + ${inv.id} + '?');">
@@ -242,7 +242,8 @@
                             <span th:if="${inv.issuedAt != null}"> | <span th:text="${#temporals.format(inv.issuedAt, 'dd.MM.yyyy HH:mm')}"></span></span>
                             <span th:if="${inv.issuedBy != null}"> | Выдал: <span th:text="${inv.issuedBy}"></span></span>
                         </div>
-                        <a th:href="@{'/api/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
+                        <a th:href="@{'/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
+
                     </div>
                 </div>
             </div>

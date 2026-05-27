@@ -138,8 +138,12 @@ public class AdminController {
     public String renameStorage(@PathVariable Long id,
                                 @RequestParam String name,
                                 RedirectAttributes ra) {
-        storageService.renameStorage(id, name);
-        ra.addFlashAttribute("success", "Склад переименован");
+        try {
+            storageService.renameStorage(id, name);
+            ra.addFlashAttribute("success", "Склад переименован");
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/storages";
     }
 

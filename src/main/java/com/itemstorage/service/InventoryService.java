@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -59,8 +61,16 @@ public class InventoryService {
         inventory.setCreatedAt(LocalDateTime.now());
 
         List<ItemRequest> items = request.getItems();
-        for (int i = 0; i < items.size(); i++) {
-            ItemRequest itemReq = items.get(i);
+
+        // СОРТИРОВКА ВЕЩЕЙ ПО НАИМЕНОВАНИЮ (А-Я)
+        List<ItemRequest> sortedItems = items.stream()
+                .sorted(Comparator.comparing(ItemRequest::getName, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+
+        log.info("Сортировка вещей по наименованию выполнена");
+
+        for (int i = 0; i < sortedItems.size(); i++) {
+            ItemRequest itemReq = sortedItems.get(i);
 
             Item item = new Item();
             item.setName(itemReq.getName());
@@ -85,7 +95,7 @@ public class InventoryService {
         }
 
         inventory = inventoryRepository.save(inventory);
-        log.info("Опись №{} создана (вещей: {})", inventory.getId(), items.size());
+        log.info("Опись №{} создана (вещей: {})", inventory.getId(), sortedItems.size());
 
         PlacementHistory history = new PlacementHistory();
         history.setInventory(inventory);
@@ -210,6 +220,8 @@ public class InventoryService {
         return inventory;
     }
 
+    // ==================== ЧТЕНИЕ ====================
+
     @Transactional(readOnly = true)
     @Cacheable(value = "inventories", key = "#id", unless = "#result == null")
     public Inventory getInventoryById(Long id) {
@@ -220,19 +232,40 @@ public class InventoryService {
     @Transactional(readOnly = true)
     @Cacheable(value = "inventories", unless = "#result == null || #result.isEmpty()")
     public List<Inventory> getAllInventories() {
-        return inventoryRepository.findAllWithDetails();
+        List<Inventory> inventories = inventoryRepository.findAllWithDetails();
+        // Сортировка вещей внутри каждой описи по наименованию
+        for (Inventory inv : inventories) {
+            if (inv.getItems() != null) {
+                inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
+            }
+        }
+        return inventories;
     }
 
     @Transactional(readOnly = true)
     @Cacheable(value = "activeInventories", unless = "#result == null || #result.isEmpty()")
     public List<Inventory> getActiveInventories() {
-        return inventoryRepository.findActiveInventoriesWithDetails();
+        List<Inventory> inventories = inventoryRepository.findActiveInventoriesWithDetails();
+        // Сортировка вещей внутри каждой описи по наименованию
+        for (Inventory inv : inventories) {
+            if (inv.getItems() != null) {
+                inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
+            }
+        }
+        return inventories;
     }
 
     @Transactional(readOnly = true)
     @Cacheable(value = "notIssuedInventories", unless = "#result == null || #result.isEmpty()")
     public List<Inventory> getNotIssuedInventories() {
-        return inventoryRepository.findNotIssuedWithDetails();
+        List<Inventory> inventories = inventoryRepository.findNotIssuedWithDetails();
+        // Сортировка вещей внутри каждой описи по наименованию
+        for (Inventory inv : inventories) {
+            if (inv.getItems() != null) {
+                inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
+            }
+        }
+        return inventories;
     }
 
     @Transactional(readOnly = true)
@@ -240,7 +273,14 @@ public class InventoryService {
         if (query == null || query.trim().isEmpty()) {
             return List.of();
         }
-        return inventoryRepository.searchByCardOrFio(query.trim());
+        List<Inventory> inventories = inventoryRepository.searchByCardOrFio(query.trim());
+        // Сортировка вещей внутри каждой описи по наименованию
+        for (Inventory inv : inventories) {
+            if (inv.getItems() != null) {
+                inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
+            }
+        }
+        return inventories;
     }
 
     @Transactional(readOnly = true)
@@ -248,14 +288,30 @@ public class InventoryService {
         if (query == null || query.trim().isEmpty()) {
             return List.of();
         }
-        return inventoryRepository.searchByQueryAndStatus(query.trim(), status);
+        List<Inventory> inventories = inventoryRepository.searchByQueryAndStatus(query.trim(), status);
+        // Сортировка вещей внутри каждой описи по наименованию
+        for (Inventory inv : inventories) {
+            if (inv.getItems() != null) {
+                inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
+            }
+        }
+        return inventories;
     }
 
     @Transactional(readOnly = true)
     @Cacheable(value = "activeForDischarged", unless = "#result == null || #result.isEmpty()")
     public List<Inventory> getActiveForDischargedPatients() {
-        return inventoryRepository.findActiveForDischargedPatients();
+        List<Inventory> inventories = inventoryRepository.findActiveForDischargedPatients();
+        // Сортировка вещей внутри каждой описи по наименованию
+        for (Inventory inv : inventories) {
+            if (inv.getItems() != null) {
+                inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
+            }
+        }
+        return inventories;
     }
+
+    // ==================== ПРИВАТНЫЕ ====================
 
     private void freeCell(StorageCell cell) {
         if (cell != null) {

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -39,10 +40,22 @@ public class DashboardController {
     }
 
     @GetMapping("/inventories")
-    public String inventories(Model model) {
+    public String inventories(
+            @RequestParam(required = false, defaultValue = "false") boolean showAll,
+            Model model) {
         try {
-            List<Inventory> inventories = inventoryService.getAllInventories();
+            List<Inventory> inventories;
+            if (showAll) {
+                // Показываем ВСЕ описи (включая выданные)
+                inventories = inventoryService.getAllInventories();
+                log.info("Загрузка всех описей для аналитика: {} записей", inventories.size());
+            } else {
+                // Показываем только АКТИВНЫЕ (не выданные)
+                inventories = inventoryService.getNotIssuedInventories();
+                log.info("Загрузка активных описей для аналитика: {} записей", inventories.size());
+            }
             model.addAttribute("inventories", inventories);
+            model.addAttribute("showAll", showAll);
             return "analyst/inventories";
         } catch (Exception e) {
             log.error("Ошибка загрузки описей для аналитика", e);
