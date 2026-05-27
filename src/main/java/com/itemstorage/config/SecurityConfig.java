@@ -75,7 +75,6 @@ public class SecurityConfig {
                         .requestMatchers("/storekeeper/**").hasAnyRole("STOREKEEPER", "ADMIN")
                         .requestMatchers("/analyst/**").hasAnyRole("ANALYST", "ADMIN", "STOREKEEPER")
                         .requestMatchers("/receptionist/**").hasAnyRole("RECEPTIONIST", "STOREKEEPER", "ADMIN")
-                        .requestMatchers("/discharge/**").hasRole("ADMIN")
                         .requestMatchers("/api/**").authenticated()
                         .requestMatchers("/patients/**").hasRole("ADMIN")
                         .requestMatchers("/search", "/search/**").authenticated()
