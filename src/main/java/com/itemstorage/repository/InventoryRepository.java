@@ -100,11 +100,9 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             nativeQuery = true)
     Double getAverageStorageTime();
 
-    // Подсчёт общего количества ячеек на всех складах
     @Query("SELECT COUNT(c) FROM StorageCell c")
     long countTotalCells();
 
-    // Подсчёт занятых ячеек на конкретную дату
     @Query(value = "SELECT COUNT(DISTINCT i.cell_id) FROM inventories i " +
             "WHERE i.cell_id IS NOT NULL " +
             "AND i.created_at < CAST(:date AS DATE) + INTERVAL '1 day' " +
