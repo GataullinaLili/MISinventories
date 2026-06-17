@@ -40,59 +40,29 @@ public class ReceptionistController {
 
     @PostMapping("/create")
     public String createInventory(
-            @RequestParam("medicalCardNumber") String medicalCardNumber,
-            @RequestParam(value = "items[0].name", required = false) List<String> itemNames,
-            @RequestParam(value = "items[0].quantity", required = false) List<Integer> itemQuantities,
-            @RequestParam(value = "items[0].description", required = false) List<String> itemDescriptions,
+            @ModelAttribute InventoryRequest request,
             @RequestParam(value = "itemPhotos", required = false) List<MultipartFile> itemPhotos,
             @AuthenticationPrincipal UserDetails userDetails,
             RedirectAttributes redirectAttributes) {
 
         log.info("=== СОЗДАНИЕ ОПИСИ ===");
-        log.info("Пациент: {}", medicalCardNumber);
-        log.info("Получено названий вещей: {}", itemNames != null ? itemNames.size() : 0);
-        log.info("Получено количеств: {}", itemQuantities != null ? itemQuantities.size() : 0);
-        log.info("Получено описаний: {}", itemDescriptions != null ? itemDescriptions.size() : 0);
-        log.info("Получено фото: {}", itemPhotos != null ? itemPhotos.size() : 0);
+        log.info("Пациент: {}", request.getMedicalCardNumber());
+        log.info("Вещей в запросе: {}", request.getItems() != null ? request.getItems().size() : 0);
+        log.info("Фото: {}", itemPhotos != null ? itemPhotos.size() : 0);
 
         try {
             User currentUser = userRepository.findByLogin(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-            if (medicalCardNumber == null || medicalCardNumber.trim().isEmpty()) {
+            if (request.getMedicalCardNumber() == null || request.getMedicalCardNumber().trim().isEmpty()) {
                 redirectAttributes.addFlashAttribute("error", "Не указан номер истории болезни");
                 return "redirect:/receptionist/create";
             }
 
-            List<ItemRequest> items = new ArrayList<>();
-            if (itemNames != null && !itemNames.isEmpty()) {
-                // Убираем null и пустые строки из списка
-                List<String> filteredNames = new ArrayList<>();
-                for (String name : itemNames) {
-                    if (name != null && !name.trim().isEmpty()) {
-                        filteredNames.add(name.trim());
-                    }
-                }
-
-                for (int i = 0; i < filteredNames.size(); i++) {
-                    String name = filteredNames.get(i);
-                    log.info("Обработка вещи {}: '{}'", i, name);
-
-                    ItemRequest item = new ItemRequest();
-                    item.setName(name);
-                    item.setQuantity(itemQuantities != null && i < itemQuantities.size() && itemQuantities.get(i) != null
-                            ? itemQuantities.get(i) : 1);
-                    item.setDescription(itemDescriptions != null && i < itemDescriptions.size() && itemDescriptions.get(i) != null
-                            ? itemDescriptions.get(i).trim() : "");
-                    items.add(item);
-                }
-            }
-
-            log.info("Всего вещей для сохранения: {}", items.size());
-
-            if (items.isEmpty()) {
+            List<ItemRequest> items = request.getItems();
+            if (items == null || items.isEmpty()) {
                 redirectAttributes.addFlashAttribute("error", "Добавьте хотя бы одну вещь");
-                return "redirect:/receptionist/create?medicalCardNumber=" + medicalCardNumber.trim();
+                return "redirect:/receptionist/create?medicalCardNumber=" + request.getMedicalCardNumber().trim();
             }
 
             // Фильтруем пустые фото
@@ -105,12 +75,7 @@ public class ReceptionistController {
                 }
             }
 
-            InventoryRequest invRequest = new InventoryRequest();
-            invRequest.setMedicalCardNumber(medicalCardNumber.trim());
-            invRequest.setItems(items);
-
-            Inventory inventory = inventoryService.createInventory(invRequest, currentUser, validPhotos);
-            log.info("Сохранено вещей в описи: {}", inventory.getItems().size());
+            Inventory inventory = inventoryService.createInventory(request, currentUser, validPhotos);
 
             redirectAttributes.addFlashAttribute("success",
                     "Опись №" + inventory.getId() + " успешно создана (вещей: " + items.size() + ")");

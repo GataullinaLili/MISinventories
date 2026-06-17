@@ -44,7 +44,7 @@ public class SecurityConfig {
 
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers("/api/qrcode")
+                        .ignoringRequestMatchers("/api/qrcode", "/exit")  // ДОБАВИТЬ /exit
                 )
 
                 .sessionManagement(session -> session

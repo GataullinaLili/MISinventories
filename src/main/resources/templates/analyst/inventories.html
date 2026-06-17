@@ -75,6 +75,8 @@
         .alert-badge { background: #fff5f5; color: #c62828; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
         .btn-secondary { background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; padding: 10px 18px; transition: background 0.3s; }
         .btn-secondary:hover { background: #5a6268; }
+        .discharged-row { background: #fff5f5 !important; }
+        .discharged-row td { color: #c62828; }
     </style>
 </head>
 <body>
@@ -82,7 +84,6 @@
 <div class="main-content">
     <div th:replace="~{fragments/topbar :: topbar}"></div>
     <div class="content">
-        <!-- Верхняя панель -->
         <div class="top-bar">
             <h1 class="page-title" style="margin:0;font-size:22px;">📋 Просмотр описей (Аналитик)</h1>
             <div class="controls-row">
@@ -90,7 +91,7 @@
                     <span>Активные</span>
                     <label class="toggle-switch">
                         <input type="checkbox" id="showAllToggle" th:checked="${showAll}"
-                               onchange="window.location.href='/analyst/inventories?showAll=' + this.checked">
+                               onchange="toggleShowAll()">
                         <span class="toggle-slider"></span>
                     </label>
                     <span>Все</span>
@@ -98,6 +99,7 @@
             </div>
         </div>
 
+        <!-- Поиск -->
         <div style="margin-bottom: 20px;">
             <div class="search-row">
                 <div class="search-input-wrapper">
@@ -118,7 +120,7 @@
         <!-- Список описей -->
         <div id="inventories-container">
             <div th:each="inv : ${inventories}" class="inventory-card"
-                 th:attr="data-id=${inv.id},data-date=${inv.createdAt},data-card=${inv.patient.medicalCardNumber}">
+                 th:attr="data-id=${inv.id},data-date=${inv.createdAt},data-card=${inv.patient.medicalCardNumber},data-discharged=${inv.patient.isDischarged}">
 
                 <div class="inventory-header" onclick="toggleCard(this)">
                     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -203,12 +205,23 @@
 
 <script th:src="@{/js/app.js}"></script>
 <script>
+    // Переменная для хранения текущего состояния фильтра
+    var currentShowAll = false;
+
     function toggleCard(header) {
         var body = header.nextElementSibling;
         var arrow = header.querySelector('.arrow');
         if (!body || !arrow) return;
         body.classList.toggle('active');
         arrow.style.transform = body.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    // Функция переключения фильтра с обновлением страницы
+    function toggleShowAll() {
+        var checkbox = document.getElementById('showAllToggle');
+        currentShowAll = checkbox.checked;
+        // Обновляем URL с параметром showAll
+        window.location.href = '/analyst/inventories?showAll=' + currentShowAll;
     }
 
     function searchInventories() {
@@ -269,7 +282,9 @@
     function clearSearch() {
         document.getElementById('search-input').value = '';
         document.getElementById('clear-btn').style.display = 'none';
-        window.location.href = '/analyst/inventories?showAll=' + (document.getElementById('showAllToggle').checked);
+        // Перезагружаем страницу с текущим параметром showAll
+        var showAll = document.getElementById('showAllToggle').checked;
+        window.location.href = '/analyst/inventories?showAll=' + showAll;
     }
 
     function renderInventories(inventories) {
@@ -384,6 +399,17 @@
 
     document.getElementById('search-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') searchInventories();
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var showAllParam = new URLSearchParams(window.location.search).get('showAll');
+        if (showAllParam === 'true') {
+            document.getElementById('showAllToggle').checked = true;
+            currentShowAll = true;
+        } else {
+            document.getElementById('showAllToggle').checked = false;
+            currentShowAll = false;
+        }
     });
 </script>
 </body>
