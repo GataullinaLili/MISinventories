@@ -13,7 +13,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-
 @Configuration
 public class SwaggerConfig {
 
@@ -48,18 +47,19 @@ public class SwaggerConfig {
                                 .url("https://opensource.org/licenses/MIT")))
                 .servers(List.of(
                         new Server()
-                                .url("https://localhost:8443")
-                                .description("Локальный сервер (HTTPS)"),
-                        new Server()
                                 .url("http://localhost:8080")
-                                .description("Локальный сервер (HTTP)")
+                                .description("Локальный сервер (HTTP) — РЕКОМЕНДУЕТСЯ")
                 ))
                 .components(new Components()
+                        .addSecuritySchemes("basicAuth", new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("basic")
+                                .description("HTTP Basic аутентификация (логин:пароль)"))
                         .addSecuritySchemes("bearerAuth", new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("Введите JWT токен")))
-                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
+                                .description("JWT токен (если используется)")))
+                .addSecurityItem(new SecurityRequirement().addList("basicAuth"));
     }
 }

@@ -3,6 +3,7 @@ package com.itemstorage.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -44,7 +45,7 @@ public class SecurityConfig {
 
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers("/api/qrcode", "/exit")  // ДОБАВИТЬ /exit
+                        .ignoringRequestMatchers("/api/qrcode", "/exit", "/admin/users/update", "/admin/users/create")
                 )
 
                 .sessionManagement(session -> session
@@ -89,7 +90,9 @@ public class SecurityConfig {
                         .loginPage("/login")
                         .defaultSuccessUrl("/search", true)
                         .failureUrl("/login?error")
-                        .permitAll())
+                        .permitAll()
+                )
+                .httpBasic(Customizer.withDefaults())  // <- ВАЖНО: добавляем Basic Auth
 
                 .logout(logout -> logout
                         .logoutUrl("/exit")
