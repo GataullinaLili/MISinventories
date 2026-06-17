@@ -12,7 +12,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByLogin(String login);
     boolean existsByLoginAndIdNot(String login, Long id);
 
-    // Новые методы
     List<User> findAllByOrderByCreatedAtDesc();
     long countByRoleAndActiveTrue(Role role);
 }

@@ -28,10 +28,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/**
- * Контроллер для управления пациентами.
- * Обеспечивает импорт/экспорт, синхронизацию с МИС и поиск.
- */
 @Controller
 @RequestMapping("/patients")
 @RequiredArgsConstructor
@@ -193,8 +189,6 @@ public class PatientController {
         model.addAttribute("patients", patientRepository.findAll());
         return "patients";
     }
-
-    // ==================== ПРИВАТНЫЕ МЕТОДЫ ====================
 
     private synchronized void autoImportFromMis() {
         try {

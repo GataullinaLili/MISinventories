@@ -12,7 +12,6 @@ public interface PlacementHistoryRepository extends JpaRepository<PlacementHisto
 
     List<PlacementHistory> findAllByOrderByPerformedAtDesc();
 
-    // История по ID описи — с явной загрузкой inventory
     @Query("SELECT h FROM PlacementHistory h " +
             "LEFT JOIN FETCH h.inventory i " +
             "LEFT JOIN FETCH i.patient p " +

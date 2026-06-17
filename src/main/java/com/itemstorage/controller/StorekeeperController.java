@@ -33,16 +33,6 @@ public class StorekeeperController {
         this.userRepository = userRepository;
         this.storageCellRepository = storageCellRepository;
     }
-
-    // УДАЛИТЬ ЭТОТ МЕТОД - он не используется
-    // @GetMapping("/placement")
-    // public String placementPage() {
-    //     return "redirect:/inventories";
-    // }
-
-    /**
-     * Просмотр справочника ячеек (только чтение).
-     */
     @GetMapping("/cells")
     public String cellsPage(Model model) {
         List<StorageCell> cells = storageCellRepository.findAllWithStorage();
@@ -50,9 +40,6 @@ public class StorekeeperController {
         return "storekeeper/cells";
     }
 
-    /**
-     * Размещение описи в ячейку.
-     */
     @PostMapping("/place")
     public String placeInventory(@RequestParam Long inventoryId,
                                  @RequestParam Long cellId,
@@ -70,9 +57,6 @@ public class StorekeeperController {
         return "redirect:/inventories";
     }
 
-    /**
-     * Перемещение описи в другую ячейку.
-     */
     @PostMapping("/move")
     public String moveInventory(@RequestParam Long inventoryId,
                                 @RequestParam Long cellId,

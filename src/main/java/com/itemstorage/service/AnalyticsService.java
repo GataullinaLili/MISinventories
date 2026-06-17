@@ -103,7 +103,6 @@ public class AnalyticsService {
         return result;
     }
 
-    // НОВОЕ: получить всю историю
     public List<PlacementHistory> getAllHistory() {
         return placementHistoryRepository.findAllByOrderByPerformedAtDesc();
     }

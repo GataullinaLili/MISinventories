@@ -10,7 +10,6 @@
         <h2>АРМ.Вещи</h2>
     </div>
     <nav>
-        <!-- ==================== ОБЩИЕ ДЛЯ ВСЕХ КРОМЕ АНАЛИТИКА ==================== -->
 
         <div sec:authorize="!hasRole('ANALYST')">
             <a href="/search">
@@ -35,8 +34,6 @@
             </a>
         </div>
 
-        <!-- ==================== АНАЛИТИК ==================== -->
-
         <div sec:authorize="hasRole('ANALYST')">
             <a href="/analyst/dashboard">
                 <span class="icon">📊</span> Дашборд
@@ -48,8 +45,6 @@
                 <span class="icon">📜</span> История операций
             </a>
         </div>
-
-        <!-- ==================== АДМИН ==================== -->
 
         <div sec:authorize="hasRole('ADMIN')">
             <a href="/admin/users">
@@ -74,8 +69,6 @@
                 <span class="icon">📜</span> История операций
             </a>
         </div>
-
-        <!-- ==================== ОБЩИЕ ==================== -->
 
         <div sec:authorize="!hasRole('ANALYST')">
             <a href="/instructions/user">

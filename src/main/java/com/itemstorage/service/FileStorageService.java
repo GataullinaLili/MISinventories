@@ -35,9 +35,6 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Сохраняет файл и возвращает имя сохранённого файла.
-     */
     public String storeFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             log.warn("Попытка сохранить пустой файл");
@@ -69,9 +66,6 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Полный путь к файлу.
-     */
     public Path getFilePath(String filename) {
         if (filename == null) return null;
         return uploadPath.resolve(filename).normalize();

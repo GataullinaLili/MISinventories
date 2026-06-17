@@ -62,7 +62,6 @@ public class InventoryService {
 
         List<ItemRequest> items = request.getItems();
 
-        // СОРТИРОВКА ВЕЩЕЙ ПО НАИМЕНОВАНИЮ (А-Я)
         List<ItemRequest> sortedItems = items.stream()
                 .sorted(Comparator.comparing(ItemRequest::getName, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
@@ -220,8 +219,6 @@ public class InventoryService {
         return inventory;
     }
 
-    // ==================== ЧТЕНИЕ ====================
-
     @Transactional(readOnly = true)
     @Cacheable(value = "inventories", key = "#id", unless = "#result == null")
     public Inventory getInventoryById(Long id) {
@@ -233,7 +230,6 @@ public class InventoryService {
     @Cacheable(value = "inventories", unless = "#result == null || #result.isEmpty()")
     public List<Inventory> getAllInventories() {
         List<Inventory> inventories = inventoryRepository.findAllWithDetails();
-        // Сортировка вещей внутри каждой описи по наименованию
         for (Inventory inv : inventories) {
             if (inv.getItems() != null) {
                 inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
@@ -246,7 +242,6 @@ public class InventoryService {
     @Cacheable(value = "activeInventories", unless = "#result == null || #result.isEmpty()")
     public List<Inventory> getActiveInventories() {
         List<Inventory> inventories = inventoryRepository.findActiveInventoriesWithDetails();
-        // Сортировка вещей внутри каждой описи по наименованию
         for (Inventory inv : inventories) {
             if (inv.getItems() != null) {
                 inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
@@ -259,7 +254,6 @@ public class InventoryService {
     @Cacheable(value = "notIssuedInventories", unless = "#result == null || #result.isEmpty()")
     public List<Inventory> getNotIssuedInventories() {
         List<Inventory> inventories = inventoryRepository.findNotIssuedWithDetails();
-        // Сортировка вещей внутри каждой описи по наименованию
         for (Inventory inv : inventories) {
             if (inv.getItems() != null) {
                 inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
@@ -274,7 +268,6 @@ public class InventoryService {
             return List.of();
         }
         List<Inventory> inventories = inventoryRepository.searchByCardOrFio(query.trim());
-        // Сортировка вещей внутри каждой описи по наименованию
         for (Inventory inv : inventories) {
             if (inv.getItems() != null) {
                 inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
@@ -289,7 +282,6 @@ public class InventoryService {
             return List.of();
         }
         List<Inventory> inventories = inventoryRepository.searchByQueryAndStatus(query.trim(), status);
-        // Сортировка вещей внутри каждой описи по наименованию
         for (Inventory inv : inventories) {
             if (inv.getItems() != null) {
                 inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
@@ -302,7 +294,6 @@ public class InventoryService {
     @Cacheable(value = "activeForDischarged", unless = "#result == null || #result.isEmpty()")
     public List<Inventory> getActiveForDischargedPatients() {
         List<Inventory> inventories = inventoryRepository.findActiveForDischargedPatients();
-        // Сортировка вещей внутри каждой описи по наименованию
         for (Inventory inv : inventories) {
             if (inv.getItems() != null) {
                 inv.getItems().sort(Comparator.comparing(Item::getName, String.CASE_INSENSITIVE_ORDER));
@@ -310,8 +301,6 @@ public class InventoryService {
         }
         return inventories;
     }
-
-    // ==================== ПРИВАТНЫЕ ====================
 
     private void freeCell(StorageCell cell) {
         if (cell != null) {

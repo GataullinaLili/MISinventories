@@ -38,7 +38,6 @@ public class SearchController {
 
         String trimmedQuery = query.trim();
 
-        // Параллельный поиск для улучшения производительности
         CompletableFuture<List<Patient>> byFio = CompletableFuture.supplyAsync(() ->
                 patientRepository.findByFullNameContainingIgnoreCase(trimmedQuery));
 
@@ -47,15 +46,12 @@ public class SearchController {
 
         CompletableFuture<List<Patient>> byDate = CompletableFuture.supplyAsync(() ->
                 searchByDate(trimmedQuery));
-
-        // Объединяем результаты
         Set<Patient> resultSet = new LinkedHashSet<>();
         try {
             resultSet.addAll(byFio.get());
             resultSet.addAll(byCard.get());
             resultSet.addAll(byDate.get());
         } catch (Exception e) {
-            // Fallback: последовательный поиск
             resultSet.addAll(patientRepository.findByFullNameContainingIgnoreCase(trimmedQuery));
             resultSet.addAll(patientRepository.findByMedicalCardNumberContaining(trimmedQuery));
             resultSet.addAll(searchByDate(trimmedQuery));

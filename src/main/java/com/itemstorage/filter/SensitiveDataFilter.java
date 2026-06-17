@@ -32,7 +32,6 @@ public class SensitiveDataFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         String uri = req.getRequestURI();
 
-        // Пропускаем статику
         for (String prefix : IGNORED_PREFIXES) {
             if (uri.startsWith(prefix)) {
                 chain.doFilter(request, response);
@@ -40,7 +39,6 @@ public class SensitiveDataFilter implements Filter {
             }
         }
 
-        // Не логируем запросы с чувствительными данными
         boolean isSensitive = false;
         for (String sensitiveUri : SENSITIVE_URIS) {
             if (uri.equals(sensitiveUri) || uri.startsWith(sensitiveUri + "/")) {

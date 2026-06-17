@@ -21,7 +21,7 @@ public class Item {
     private String description;
 
     @Column(name = "photo_path", length = 500)
-    private String photoPath;  // путь к файлу фото
+    private String photoPath;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inventory_id", nullable = false)

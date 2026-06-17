@@ -46,11 +46,9 @@ public class DashboardController {
         try {
             List<Inventory> inventories;
             if (showAll) {
-                // Показываем ВСЕ описи (включая выданные)
                 inventories = inventoryService.getAllInventories();
                 log.info("Загрузка всех описей для аналитика: {} записей", inventories.size());
             } else {
-                // Показываем только АКТИВНЫЕ (не выданные)
                 inventories = inventoryService.getNotIssuedInventories();
                 log.info("Загрузка активных описей для аналитика: {} записей", inventories.size());
             }

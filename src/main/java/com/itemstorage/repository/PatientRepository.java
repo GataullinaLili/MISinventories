@@ -30,5 +30,5 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
 
     List<Patient> findByIsDischargedTrue();
 
-    long countByIsDischargedTrue();  // <-- ДОБАВЛЕНО
+    long countByIsDischargedTrue();
 }

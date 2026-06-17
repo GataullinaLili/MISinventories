@@ -32,14 +32,6 @@ public class PatientExcelService {
         this.inventoryRepository = inventoryRepository;
     }
 
-    /**
-     * Импорт пациентов из Excel-файла.
-     * Ожидаемые колонки:
-     *   A — Номер истории болезни (medicalCardNumber)
-     *   B — ФИО пациента (fullName)
-     *   C — Дата рождения (birthDate)
-     * Первая строка пропускается как заголовок.
-     */
     @Transactional
     public Map<String, Object> importFromExcel(MultipartFile file) {
         Map<String, Object> result = new HashMap<>();
@@ -103,15 +95,10 @@ public class PatientExcelService {
         return result;
     }
 
-    /**
-     * Экспорт всех пациентов в Excel-файл.
-     * Колонки: Номер истории, ФИО, Дата рождения, Выписан, Дата выписки.
-     */
     public byte[] exportToExcel() {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Пациенты");
 
-            // Стиль для заголовков
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -119,7 +106,6 @@ public class PatientExcelService {
             headerStyle.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // Заголовок
             Row header = sheet.createRow(0);
             String[] columns = {"Номер истории", "ФИО", "Дата рождения", "Выписан", "Дата выписки"};
             for (int i = 0; i < columns.length; i++) {
@@ -129,7 +115,6 @@ public class PatientExcelService {
                 sheet.autoSizeColumn(i);
             }
 
-            // Данные
             List<Patient> patients = patientRepository.findAll();
             int rowNum = 1;
             for (Patient patient : patients) {
@@ -148,7 +133,6 @@ public class PatientExcelService {
                 }
             }
 
-            // Автоширина для всех колонок
             for (int i = 0; i < columns.length; i++) {
                 sheet.autoSizeColumn(i);
             }
@@ -161,16 +145,6 @@ public class PatientExcelService {
         }
     }
 
-    /**
-     * Выписка пациентов из Excel-файла.
-     * Ожидаемые колонки:
-     *   A — Номер истории болезни (medicalCardNumber)
-     * Первая строка пропускается как заголовок.
-     *
-     * При выписке проверяется наличие активных (не выданных) описей.
-     * Пациент выписывается в любом случае, но при наличии активных описей
-     * генерируется предупреждение.
-     */
     @Transactional
     public Map<String, Object> dischargePatients(MultipartFile file) {
         Map<String, Object> result = new HashMap<>();
@@ -216,7 +190,6 @@ public class PatientExcelService {
                         continue;
                     }
 
-                    // Проверяем наличие активных описей перед выпиской
                     List<Inventory> activeInventories = inventoryRepository
                             .findByPatientIdAndStatusNot(patient.getId(), InventoryStatus.ISSUED);
 
@@ -231,7 +204,6 @@ public class PatientExcelService {
                                 + invNumbers);
                     }
 
-                    // Выписываем пациента в любом случае
                     patient.setIsDischarged(true);
                     patient.setDischargedAt(LocalDateTime.now());
                     patientRepository.save(patient);
@@ -254,12 +226,6 @@ public class PatientExcelService {
         return result;
     }
 
-    /**
-     * Получение строкового значения ячейки Excel.
-     * Поддерживает строковые и числовые типы.
-     * Для числовых ячеек, содержащих дату, возвращает пустую строку
-     * (даты обрабатываются отдельным методом).
-     */
     private String getCellStringValue(Cell cell) {
         if (cell == null) return "";
         switch (cell.getCellType()) {
@@ -267,9 +233,8 @@ public class PatientExcelService {
                 return cell.getStringCellValue().trim();
             case NUMERIC:
                 if (DateUtil.isCellDateFormatted(cell)) {
-                    return ""; // Даты обрабатываются отдельно
+                    return "";
                 }
-                // Форматируем число без десятичной части, если она нулевая
                 double numValue = cell.getNumericCellValue();
                 if (numValue == Math.floor(numValue) && !Double.isInfinite(numValue)) {
                     return String.valueOf((long) numValue);
@@ -288,13 +253,6 @@ public class PatientExcelService {
         }
     }
 
-    /**
-     * Получение значения даты из ячейки Excel.
-     * Поддерживает:
-     *   - NUMERIC ячейки с датой (внутренний формат Excel)
-     *   - STRING ячейки с датой в форматах:
-     *     dd.MM.yyyy, dd/MM/yyyy, yyyy-MM-dd, yyyy.MM.dd
-     */
     private LocalDate getCellDateValue(Cell cell) {
         if (cell == null) return null;
         try {
@@ -312,7 +270,6 @@ public class PatientExcelService {
                 return LocalDate.parse(dateStr, formatter);
             }
         } catch (Exception e) {
-            // Не удалось распознать дату — возвращаем null
         }
         return null;
     }

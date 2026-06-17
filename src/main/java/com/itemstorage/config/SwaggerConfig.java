@@ -13,10 +13,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-/**
- * Конфигурация Swagger/OpenAPI документации.
- * Доступна после запуска: http://localhost:8443/swagger-ui.html
- */
+
 @Configuration
 public class SwaggerConfig {
 

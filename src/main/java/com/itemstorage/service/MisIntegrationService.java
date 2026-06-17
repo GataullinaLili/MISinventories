@@ -30,9 +30,6 @@ public class MisIntegrationService {
         this.restTemplate = new RestTemplate();
     }
 
-    /**
-     * Получение всех пациентов из МИС.
-     */
     public List<PatientDTO> getAllPatients() {
         try {
             String url = misApiUrl + "/patients?size=1000";
@@ -67,9 +64,6 @@ public class MisIntegrationService {
         return List.of();
     }
 
-    /**
-     * Поиск пациентов в МИС по запросу (ФИО, номер истории, ID МИС).
-     */
     public List<PatientDTO> searchPatients(String query) {
         if (query == null || query.trim().isEmpty()) {
             return List.of();
@@ -147,7 +141,6 @@ public class MisIntegrationService {
         dto.setDepartment(getString(data, "department"));
         dto.setAdmissionDate(getString(data, "admissionDate"));
 
-        // Статус выписки — проверяем оба варианта
         Object dischargedObj = data.get("discharged");
         if (dischargedObj instanceof Boolean) {
             dto.setDischarged((Boolean) dischargedObj);
@@ -162,9 +155,6 @@ public class MisIntegrationService {
         return dto;
     }
 
-    /**
-     * Безопасное получение строки из Map.
-     */
     private String getString(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value != null ? value.toString() : null;

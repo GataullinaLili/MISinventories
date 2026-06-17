@@ -26,7 +26,7 @@ public class StorageService {
 
     @Cacheable(value = "storages", unless = "#result == null || #result.isEmpty()")
     public List<Storage> getAllStorages() {
-        System.out.println("=== ЗАПРОС К БД: getAllStorages ==="); // для отладки
+        System.out.println("=== ЗАПРОС К БД: getAllStorages ===");
         return storageRepository.findAll();
     }
 
@@ -50,7 +50,6 @@ public class StorageService {
         cell.setStorage(storage);
         cell.setIsOccupied(false);
 
-        // Очищаем кэш ячеек при создании новой
         evictCellCaches();
         return cellRepository.save(cell);
     }
@@ -79,7 +78,6 @@ public class StorageService {
         evictCellCaches();
     }
 
-    // ОЧИСТКА КЭША при переименовании склада
     @CacheEvict(value = "storages", allEntries = true)
     @Transactional
     public void renameStorage(Long storageId, String newName) {

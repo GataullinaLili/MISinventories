@@ -27,7 +27,6 @@ public class StorageApiController {
     @GetMapping("/storages")
     public List<Storage> getAllStorages() {
         List<Storage> storages = storageRepository.findAll();
-        // Сортировка по названию склада (по алфавиту)
         return storages.stream()
                 .sorted(Comparator.comparing(Storage::getName, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
@@ -39,7 +38,6 @@ public class StorageApiController {
             @Parameter(description = "ID склада", example = "2", required = true)
             @PathVariable Long storageId) {
         List<StorageCell> cells = storageCellRepository.findFreeByStorageId(storageId);
-        // Сортировка по названию ячейки (по алфавиту)
         return cells.stream()
                 .sorted(Comparator.comparing(StorageCell::getName, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());

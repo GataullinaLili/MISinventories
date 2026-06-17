@@ -31,7 +31,6 @@ public class AdminController {
     private final StorageService storageService;
     private final PasswordEncoder passwordEncoder;
 
-    // ==================== ПОЛЬЗОВАТЕЛИ ====================
 
     @GetMapping("/users")
     public String usersPage(Model model) {
@@ -105,7 +104,6 @@ public class AdminController {
         return "redirect:/admin/users";
     }
 
-    // ==================== СКЛАДЫ ====================
 
     @GetMapping("/storages")
     public String storagesPage(Model model) {
@@ -147,7 +145,6 @@ public class AdminController {
         return "redirect:/admin/storages";
     }
 
-    // ==================== ЯЧЕЙКИ ====================
 
     @GetMapping("/cells")
     public String cellsPage(@RequestParam(required = false) Long storageId, Model model) {

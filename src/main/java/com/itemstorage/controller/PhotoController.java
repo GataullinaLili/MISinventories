@@ -43,7 +43,6 @@ public class PhotoController {
                         .body(resource);
             }
         } catch (Exception e) {
-            // Файл не найден
         }
         return ResponseEntity.notFound().build();
     }
