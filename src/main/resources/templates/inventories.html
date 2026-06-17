@@ -130,6 +130,14 @@
         }
         .qr-scanner-btn:hover { background: #1e5f80; }
         .qr-scanner-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Скрытые кнопки для RECEPTIONIST */
+        .action-buttons .hidden-for-receptionist {
+            display: inline-block;
+        }
+        .action-buttons .hidden-for-receptionist {
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -241,19 +249,37 @@
                         </tbody>
                     </table>
 
+                    <!-- КНОПКИ ДЕЙСТВИЙ С ПРОВЕРКОЙ РОЛЕЙ -->
                     <div class="action-buttons" th:if="${inv.status.name() != 'ISSUED'}">
-                        <button class="btn btn-primary btn-sm" th:if="${inv.status.name() == 'CREATED'}"
+                        <!-- Разместить: только STOREKEEPER и ADMIN -->
+                        <button class="btn btn-primary btn-sm"
+                                th:if="${inv.status.name() == 'CREATED'}"
+                                sec:authorize="hasAnyRole('STOREKEEPER', 'ADMIN')"
                                 th:attr="onclick=|openPlaceModal(${inv.id})|">📦 Разместить</button>
-                        <button class="btn btn-outline btn-sm" th:if="${inv.status.name() == 'PLACED' or inv.status.name() == 'MOVED'}"
+
+                        <!-- Переместить: только STOREKEEPER и ADMIN -->
+                        <button class="btn btn-outline btn-sm"
+                                th:if="${inv.status.name() == 'PLACED' or inv.status.name() == 'MOVED'}"
+                                sec:authorize="hasAnyRole('STOREKEEPER', 'ADMIN')"
                                 th:attr="onclick=|openMoveModal(${inv.id})|">📦 Переместить</button>
-                        <a th:href="@{'/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
-                        <button class="btn btn-outline btn-sm" th:attr="onclick=|printQrCode('${inv.id}')|">🖨 QR</button>
+
+                        <!-- Выдать: только STOREKEEPER и ADMIN -->
                         <form th:action="@{'/storekeeper/issue/'+${inv.id}}" method="post" style="display:inline;"
+                              sec:authorize="hasAnyRole('STOREKEEPER', 'ADMIN')"
                               onsubmit="return confirm('Подтвердите выдачу описи №' + ${inv.id} + '?');">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                             <button type="submit" class="btn btn-success btn-sm">✅ Выдать</button>
                         </form>
+
+                        <!-- Печать: доступна всем аутентифицированным пользователям -->
+                        <a th:href="@{'/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
+
+                        <!-- QR: доступен всем аутентифицированным пользователям -->
+                        <button class="btn btn-outline btn-sm"
+                                th:attr="onclick=|printQrCode('${inv.id}')|">🖨 QR</button>
                     </div>
 
+                    <!-- Выданные описи: только печать -->
                     <div th:if="${inv.status.name() == 'ISSUED'}" style="background:#fce4ec;padding:12px;border-radius:8px;color:#c62828;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                         <div>
                             <strong>✅ Вещи выданы</strong>
@@ -261,7 +287,6 @@
                             <span th:if="${inv.issuedBy != null}"> | Выдал: <span th:text="${inv.issuedBy}"></span></span>
                         </div>
                         <a th:href="@{'/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
-
                     </div>
                 </div>
             </div>
@@ -486,6 +511,7 @@
         document.querySelectorAll('.arrow').forEach(function(a) { a.style.transform = 'rotate(0deg)'; });
     }
 
+    // ==================== РЕЖИМ СКАНИРОВАНИЯ (USB) ====================
     function toggleScanMode() {
         var input = document.getElementById('search-inventory');
         var btn = document.getElementById('scan-btn');
@@ -507,7 +533,6 @@
                 input.focus();
                 input.select();
             }, 50);
-
 
             if (focusInterval) clearInterval(focusInterval);
             focusInterval = setInterval(function() {
@@ -629,6 +654,7 @@
         return match ? match[1] : cleaned;
     }
 
+    // ==================== ВСТРОЕННЫЙ QR-СКАНЕР БРАУЗЕРА ====================
     function startBrowserScanner() {
         var input = document.getElementById('search-inventory');
         var btn = document.getElementById('browser-scanner-btn');
@@ -673,7 +699,6 @@
                 video.srcObject = s;
                 video.setAttribute('playsinline', true);
                 video.play();
-
 
                 scanFrame();
 
@@ -741,6 +766,8 @@
             }
         });
     }
+
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('sort-date').classList.add('active');
         loadStorages('place-storage');
