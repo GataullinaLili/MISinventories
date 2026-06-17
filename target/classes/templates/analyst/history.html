@@ -198,7 +198,6 @@
 <script>
     var currentTab = 'all';
 
-    // При загрузке показываем все описи
     document.addEventListener('DOMContentLoaded', function() {
         loadAllInventories();
     });
@@ -252,7 +251,6 @@
         }
     }
 
-    // Загрузка всех описей с их историей
     function loadAllInventories() {
         var container = document.getElementById('history-results');
         container.innerHTML = '<div class="loading"><p>⏳ Загрузка описей...</p></div>';
@@ -294,19 +292,16 @@
             });
     }
 
-    // Загрузка истории для конкретной описи
     function toggleInventoryHistory(inventoryId) {
         var body = document.getElementById('inv-body-' + inventoryId);
         var arrow = document.getElementById('arrow-' + inventoryId);
 
         if (body.classList.contains('active')) {
-            // Скрываем
             body.classList.remove('active');
             arrow.style.transform = 'rotate(0deg)';
             return;
         }
 
-        // Показываем и загружаем историю
         body.classList.add('active');
         arrow.style.transform = 'rotate(180deg)';
         body.innerHTML = '<div class="loading">⏳ Загрузка истории...</div>';
@@ -364,7 +359,6 @@
             });
     }
 
-    // Поиск по номеру описи
     function searchByInventory() {
         var id = document.getElementById('search-inventory-id').value.trim();
         if (!id) return;
@@ -400,8 +394,6 @@
                 container.innerHTML = '<div class="no-results"><p style="font-size:48px;">🔍</p><p>Опись не найдена</p></div>';
             });
     }
-
-    // Поиск по номеру истории
     function searchByPatient() {
         var card = document.getElementById('search-patient-card').value.trim();
         if (!card) return;
@@ -422,7 +414,6 @@
             });
     }
 
-    // Поиск по сотруднику
     function searchByUser() {
         var login = document.getElementById('search-user-login').value.trim();
         if (!login) return;
@@ -443,7 +434,6 @@
             });
     }
 
-    // Отображение только истории (без карточек описей)
     function renderHistoryOnly(history, container) {
         var html = '<div class="timeline">';
         history.forEach(function(h) {
@@ -471,7 +461,6 @@
         container.innerHTML = html;
     }
 
-    // Enter в полях ввода
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             if (currentTab === 'inventory') searchByInventory();

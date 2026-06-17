@@ -189,7 +189,6 @@
         openModal('add-cell-modal');
     }
 
-    // Закрытие модальных окон при клике на фон
     document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
         overlay.addEventListener('click', function(e) {
             if (e.target === this) {
@@ -198,7 +197,6 @@
         });
     });
 
-    // Закрытие по Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             document.querySelectorAll('.modal-overlay.active').forEach(function(modal) {
