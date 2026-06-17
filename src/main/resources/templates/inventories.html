@@ -114,6 +114,22 @@
         .item-photo { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; transition: transform 0.2s; }
         .item-photo:hover { transform: scale(1.1); }
         .item-no-photo { color: #ccc; font-size: 20px; }
+
+        .qr-scanner-btn {
+            background: #287aa3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 10px 18px;
+            transition: background 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .qr-scanner-btn:hover { background: #1e5f80; }
+        .qr-scanner-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -144,11 +160,13 @@
             <div class="search-row">
                 <div class="search-input-wrapper">
                     <input type="text" id="search-inventory" placeholder="№ описи или отсканируйте QR-код..." autocomplete="off">
-                    <button type="button" class="scan-icon" id="scan-btn" onclick="toggleScanMode()" title="Сканировать QR-код">📷</button>
+                    <button type="button" class="scan-icon" id="scan-btn" onclick="toggleScanMode()" title="Сканировать QR-код через сканер">📷</button>
                 </div>
                 <button type="button" onclick="searchInventory()" class="btn btn-primary">🔍 Найти</button>
                 <button type="button" onclick="searchByMedicalCard()" class="btn btn-secondary">📋 Поиск по истории</button>
                 <button type="button" onclick="clearSearch()" class="btn btn-outline btn-sm" id="clear-btn" style="display:none;">✕ Очистить</button>
+                <!-- КНОПКА ДЛЯ ВСТРОЕННОГО QR-СКАНЕРА БРАУЗЕРА -->
+                <button type="button" onclick="startBrowserScanner()" class="qr-scanner-btn" id="browser-scanner-btn">📷 Сканировать QR (камера)</button>
             </div>
             <div class="scan-hint" id="scan-hint"></div>
         </div>
@@ -288,6 +306,7 @@
     var scanTimeout = null;
     var lastScanTime = 0;
     var currentSort = 'date';
+    var focusInterval = null;
 
     function toggleCard(header) {
         var body = header.nextElementSibling;
@@ -467,41 +486,123 @@
         document.querySelectorAll('.arrow').forEach(function(a) { a.style.transform = 'rotate(0deg)'; });
     }
 
+    function toggleScanMode() {
+        var input = document.getElementById('search-inventory');
+        var btn = document.getElementById('scan-btn');
+        var hint = document.getElementById('scan-hint');
+
+        scanMode = !scanMode;
+
+        if (scanMode) {
+            btn.classList.add('active');
+            hint.textContent = '🔴 Режим сканирования. Отсканируйте QR-код.';
+            hint.className = 'scan-hint ready';
+            input.value = '';
+            input.placeholder = 'Ожидание сканера...';
+            input.classList.add('scan-active');
+            scanBuffer = '';
+            if (scanTimeout) clearTimeout(scanTimeout);
+
+            setTimeout(function() {
+                input.focus();
+                input.select();
+            }, 50);
+
+
+            if (focusInterval) clearInterval(focusInterval);
+            focusInterval = setInterval(function() {
+                if (scanMode && document.activeElement !== input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 100);
+
+        } else {
+            btn.classList.remove('active');
+            hint.textContent = '';
+            hint.className = 'scan-hint';
+            input.placeholder = '№ описи или отсканируйте QR-код...';
+            input.classList.remove('scan-active');
+            if (focusInterval) {
+                clearInterval(focusInterval);
+                focusInterval = null;
+            }
+            input.focus();
+        }
+    }
 
     function setupScanner() {
         var input = document.getElementById('search-inventory');
+
         document.addEventListener('keydown', function(e) {
             if (!scanMode) return;
-            if (document.activeElement !== input) input.focus();
             if (e.key === 'Enter') {
                 if (scanBuffer.length > 0) {
-                    e.preventDefault(); e.stopPropagation();
-                    input.value = extractNumber(scanBuffer); scanBuffer = '';
+                    e.preventDefault();
+                    e.stopPropagation();
+                    input.value = extractNumber(scanBuffer);
+                    scanBuffer = '';
                     input.style.backgroundColor = '#e8f5e9';
-                    setTimeout(function() { input.style.backgroundColor = ''; }, 200);
-                    setTimeout(searchInventory, 50);
+                    setTimeout(function() {
+                        input.style.backgroundColor = '';
+                        searchInventory();
+                    }, 100);
                 }
                 if (scanTimeout) clearTimeout(scanTimeout);
                 return;
             }
-            if (e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); return; }
-            if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                e.preventDefault(); e.stopPropagation();
+
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                e.stopPropagation();
+                input.focus();
+                return;
+            }
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
+            if (e.ctrlKey || e.altKey || e.metaKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
+            if (e.key.length === 1) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (document.activeElement !== input) {
+                    input.focus();
+                }
                 var now = Date.now();
                 if (now - lastScanTime > 100) scanBuffer = '';
-                scanBuffer += e.key; lastScanTime = now;
+                scanBuffer += e.key;
+                lastScanTime = now;
                 if (scanTimeout) clearTimeout(scanTimeout);
                 scanTimeout = setTimeout(function() {
                     if (scanBuffer.length > 0) {
-                        input.value = extractNumber(scanBuffer); scanBuffer = '';
+                        input.value = extractNumber(scanBuffer);
+                        scanBuffer = '';
                         input.style.backgroundColor = '#e8f5e9';
-                        setTimeout(function() { input.style.backgroundColor = ''; }, 200);
-                        setTimeout(searchInventory, 50);
+                        setTimeout(function() {
+                            input.style.backgroundColor = '';
+                            searchInventory();
+                        }, 100);
                     }
                 }, 80);
             }
         });
-        input.addEventListener('blur', function() { if (scanMode) setTimeout(function() { input.focus(); }, 5); });
+
+        input.addEventListener('blur', function() {
+            if (scanMode) {
+                setTimeout(function() { input.focus(); }, 5);
+            }
+        });
+
         input.addEventListener('paste', function(e) {
             if (!scanMode) return;
             e.preventDefault();
@@ -509,6 +610,15 @@
             if (pastedData && pastedData.trim()) {
                 input.value = extractNumber(pastedData);
                 setTimeout(searchInventory, 50);
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!scanMode) return;
+            if (e.target !== input && !input.contains(e.target)) {
+                e.preventDefault();
+                e.stopPropagation();
+                input.focus();
             }
         });
     }
@@ -519,28 +629,118 @@
         return match ? match[1] : cleaned;
     }
 
-    function toggleScanMode() {
-        scanMode = !scanMode;
+    function startBrowserScanner() {
         var input = document.getElementById('search-inventory');
-        var btn = document.getElementById('scan-btn');
-        var hint = document.getElementById('scan-hint');
-        if (scanMode) {
-            btn.classList.add('active');
-            hint.textContent = '🔴 Режим сканирования. Отсканируйте QR-код.';
-            hint.className = 'scan-hint ready';
-            input.value = ''; input.focus();
-            input.placeholder = 'Ожидание сканера...';
-            input.classList.add('scan-active');
-            scanBuffer = '';
-            if (scanTimeout) clearTimeout(scanTimeout);
-        } else {
-            btn.classList.remove('active');
-            hint.textContent = ''; hint.className = 'scan-hint';
-            input.placeholder = '№ описи или отсканируйте QR-код...';
-            input.classList.remove('scan-active');
-        }
-    }
+        var btn = document.getElementById('browser-scanner-btn');
 
+        if (!('mediaDevices' in navigator) || !('getUserMedia' in navigator.mediaDevices)) {
+            alert('Камера не поддерживается в этом браузере. Используйте USB-сканер.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Запуск камеры...';
+
+        var scannerContainer = document.createElement('div');
+        scannerContainer.id = 'browser-scanner-container';
+        scannerContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10001; display: flex; justify-content: center; align-items: center; flex-direction: column;';
+
+        var scannerBox = document.createElement('div');
+        scannerBox.style.cssText = 'background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 450px; text-align: center;';
+
+        scannerBox.innerHTML = `
+            <h4 style="margin:0 0 15px 0;">📷 Наведите камеру на QR-код</h4>
+            <div id="browser-scanner-video" style="width:100%; max-width:400px; margin:0 auto; border-radius:8px; overflow:hidden; background:#000;">
+                <video id="browser-video" style="width:100%; display:block;"></video>
+                <canvas id="browser-canvas" style="display:none;"></canvas>
+            </div>
+            <div id="browser-scan-status" style="margin-top:10px; font-size:13px; color:#888;">Ожидание QR-кода...</div>
+            <button onclick="stopBrowserScanner()" style="margin-top:15px; padding:10px 20px; background:#e74c3c; color:white; border:none; border-radius:8px; cursor:pointer;">✕ Отмена</button>
+        `;
+
+        scannerContainer.appendChild(scannerBox);
+        document.body.appendChild(scannerContainer);
+
+        var video = document.getElementById('browser-video');
+        var canvas = document.getElementById('browser-canvas');
+        var ctx = canvas.getContext('2d');
+        var scanning = true;
+        var stream = null;
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(function(s) {
+                stream = s;
+                video.srcObject = s;
+                video.setAttribute('playsinline', true);
+                video.play();
+
+
+                scanFrame();
+
+                function scanFrame() {
+                    if (!scanning) return;
+
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                        try {
+                            if (typeof QrCode !== 'undefined') {
+                                var result = QrCode.decode(imageData.data, canvas.width, canvas.height);
+                                if (result) {
+                                    stopBrowserScanner();
+                                    var cleanData = extractNumber(result);
+                                    if (cleanData) {
+                                        input.value = cleanData;
+                                        document.getElementById('browser-scan-status').textContent = '✅ Найдено! Ищем опись...';
+                                        setTimeout(searchInventory, 300);
+                                    } else {
+                                        alert('Не удалось распознать QR-код. Попробуйте ещё раз.');
+                                        document.getElementById('browser-scan-status').textContent = '❌ Не удалось распознать';
+                                    }
+                                    return;
+                                }
+                            } else {
+                                document.getElementById('browser-scan-status').textContent = '⏳ Используется ручное сканирование...';
+                            }
+                        } catch (e) {
+
+                        }
+
+                        requestAnimationFrame(scanFrame);
+                    } else {
+                        setTimeout(scanFrame, 100);
+                    }
+                }
+            })
+            .catch(function(err) {
+                alert('Не удалось получить доступ к камере: ' + err.message);
+                stopBrowserScanner();
+            });
+
+        window._scannerStream = stream;
+        window._scannerScanning = scanning;
+
+        window.stopBrowserScanner = function() {
+            scanning = false;
+            if (stream) {
+                stream.getTracks().forEach(function(track) { track.stop(); });
+            }
+            var container = document.getElementById('browser-scanner-container');
+            if (container) container.remove();
+            btn.disabled = false;
+            btn.textContent = '📷 Сканировать QR (камера)';
+            input.focus();
+        };
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('browser-scanner-container')) {
+                stopBrowserScanner();
+            }
+        });
+    }
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('sort-date').classList.add('active');
         loadStorages('place-storage');

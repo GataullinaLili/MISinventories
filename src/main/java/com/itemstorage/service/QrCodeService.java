@@ -53,10 +53,12 @@ public class QrCodeService {
 
         String cleaned = data.trim();
 
+        // 1. Если это только цифры - сразу возвращаем
         if (cleaned.matches("\\d+")) {
             return cleaned;
         }
 
+        // 2. Если это URL - извлекаем ID из конца URL
         if (cleaned.toLowerCase().contains("http") || cleaned.toLowerCase().contains("localhost") || cleaned.toLowerCase().contains("www")) {
             Pattern urlPattern = Pattern.compile("/(\\d+)(?:/|$|\\?|#)");
             Matcher urlMatcher = urlPattern.matcher(cleaned);
@@ -72,12 +74,14 @@ public class QrCodeService {
             return "";
         }
 
+        // 3. Формат INV-12345 или Опись №12345
         Pattern pattern = Pattern.compile("(?:INV-|inv-|№)?(\\d+)");
         Matcher matcher = pattern.matcher(cleaned);
         if (matcher.find()) {
             return matcher.group(1);
         }
 
+        // 4. Любые другие цифры в строке
         Pattern firstNumberPattern = Pattern.compile("\\d+");
         Matcher firstMatcher = firstNumberPattern.matcher(cleaned);
         if (firstMatcher.find()) {
