@@ -98,7 +98,6 @@
             </div>
         </div>
 
-        <!-- Поиск (без QR сканера для аналитика) -->
         <div style="margin-bottom: 20px;">
             <div class="search-row">
                 <div class="search-input-wrapper">
@@ -184,7 +183,6 @@
                         </tbody>
                     </table>
 
-                    <!-- Только кнопка печати (без действий) -->
                     <div style="margin-top:10px;">
                         <a th:href="@{'/inventory/'+${inv.id}+'/download'}" class="btn btn-outline btn-sm" target="_blank">📥 Печать</a>
                     </div>
@@ -192,7 +190,6 @@
             </div>
         </div>
 
-        <!-- Пустое состояние -->
         <div th:unless="${inventories != null && !inventories.isEmpty()}" class="no-results">
             <p style="font-size:48px;">📋</p>
             <p>Нет описей для отображения</p>

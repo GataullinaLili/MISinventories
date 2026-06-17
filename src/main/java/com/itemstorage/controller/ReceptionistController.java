@@ -48,10 +48,12 @@ public class ReceptionistController {
             @AuthenticationPrincipal UserDetails userDetails,
             RedirectAttributes redirectAttributes) {
 
-        log.info("Создание описи: история={}, вещей={}, фото={}",
-                medicalCardNumber,
-                itemNames != null ? itemNames.size() : 0,
-                itemPhotos != null ? itemPhotos.size() : 0);
+        log.info("=== СОЗДАНИЕ ОПИСИ ===");
+        log.info("Пациент: {}", medicalCardNumber);
+        log.info("Получено названий вещей: {}", itemNames != null ? itemNames.size() : 0);
+        log.info("Получено количеств: {}", itemQuantities != null ? itemQuantities.size() : 0);
+        log.info("Получено описаний: {}", itemDescriptions != null ? itemDescriptions.size() : 0);
+        log.info("Получено фото: {}", itemPhotos != null ? itemPhotos.size() : 0);
 
         try {
             User currentUser = userRepository.findByLogin(userDetails.getUsername())
@@ -63,13 +65,21 @@ public class ReceptionistController {
             }
 
             List<ItemRequest> items = new ArrayList<>();
-            if (itemNames != null) {
-                for (int i = 0; i < itemNames.size(); i++) {
-                    String name = itemNames.get(i);
-                    if (name == null || name.trim().isEmpty()) continue;
+            if (itemNames != null && !itemNames.isEmpty()) {
+                // Убираем null и пустые строки из списка
+                List<String> filteredNames = new ArrayList<>();
+                for (String name : itemNames) {
+                    if (name != null && !name.trim().isEmpty()) {
+                        filteredNames.add(name.trim());
+                    }
+                }
+
+                for (int i = 0; i < filteredNames.size(); i++) {
+                    String name = filteredNames.get(i);
+                    log.info("Обработка вещи {}: '{}'", i, name);
 
                     ItemRequest item = new ItemRequest();
-                    item.setName(name.trim());
+                    item.setName(name);
                     item.setQuantity(itemQuantities != null && i < itemQuantities.size() && itemQuantities.get(i) != null
                             ? itemQuantities.get(i) : 1);
                     item.setDescription(itemDescriptions != null && i < itemDescriptions.size() && itemDescriptions.get(i) != null
@@ -78,11 +88,14 @@ public class ReceptionistController {
                 }
             }
 
+            log.info("Всего вещей для сохранения: {}", items.size());
+
             if (items.isEmpty()) {
                 redirectAttributes.addFlashAttribute("error", "Добавьте хотя бы одну вещь");
                 return "redirect:/receptionist/create?medicalCardNumber=" + medicalCardNumber.trim();
             }
 
+            // Фильтруем пустые фото
             List<MultipartFile> validPhotos = new ArrayList<>();
             if (itemPhotos != null) {
                 for (MultipartFile photo : itemPhotos) {
@@ -97,6 +110,7 @@ public class ReceptionistController {
             invRequest.setItems(items);
 
             Inventory inventory = inventoryService.createInventory(invRequest, currentUser, validPhotos);
+            log.info("Сохранено вещей в описи: {}", inventory.getItems().size());
 
             redirectAttributes.addFlashAttribute("success",
                     "Опись №" + inventory.getId() + " успешно создана (вещей: " + items.size() + ")");

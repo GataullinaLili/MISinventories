@@ -93,6 +93,7 @@ public class InventoryService {
             inventory.getItems().add(item);
         }
 
+
         inventory = inventoryRepository.save(inventory);
         log.info("Опись №{} создана (вещей: {})", inventory.getId(), sortedItems.size());
 
@@ -103,6 +104,7 @@ public class InventoryService {
         history.setPerformedAt(LocalDateTime.now());
         historyRepository.save(history);
 
+        log.info("Получено вещей для сохранения: {}", items.size());
         return inventory;
     }
 

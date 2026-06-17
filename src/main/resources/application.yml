@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/0test
+    url: jdbc:postgresql://localhost:5432/01test
     username: postgres
     password: admin
   jpa:

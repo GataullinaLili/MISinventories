@@ -157,13 +157,18 @@
             '</div>';
 
         container.appendChild(div);
+        reindexItems();
     }
 
     function removeItem(idx) {
         var row = document.getElementById('item-row-' + idx);
         if (row) row.remove();
         var remaining = document.querySelectorAll('#items-container .item-row');
-        if (remaining.length === 0) addItem();
+        if (remaining.length === 0) {
+            addItem();
+        } else {
+            reindexItems();
+        }
     }
 
     function quickAddItem(name) {
@@ -171,6 +176,20 @@
         var rows = document.querySelectorAll('#items-container .item-row');
         var lastRow = rows[rows.length - 1];
         if (lastRow) lastRow.scrollIntoView({ behavior: 'smooth' });
+    }
+    function reindexItems() {
+        var rows = document.querySelectorAll('#items-container .item-row');
+        rows.forEach(function(row, index) {
+            var inputs = row.querySelectorAll('input');
+            inputs.forEach(function(input) {
+                var name = input.getAttribute('name');
+                if (name) {
+                    var newName = name.replace(/items\[\d+\]/, 'items[' + index + ']');
+                    input.setAttribute('name', newName);
+                }
+            });
+        });
+        console.log('Переиндексация выполнена. Всего строк: ' + rows.length);
     }
 
     function previewPhoto(idx, input) {
@@ -181,7 +200,7 @@
 
         var reader = new FileReader();
         reader.onload = function(e) {
-            document.getElementById('photo-box-' + idx).innerHTML = '<img src="' + e.target.result + '" alt="Фото">';
+            document.getElementById('photo-box-' + idx).innerHTML = '<img src="' + e.target.result + '" alt="Фото" style="width:100%;height:100%;object-fit:cover;">';
         };
         reader.readAsDataURL(file);
     }
@@ -189,8 +208,16 @@
     document.getElementById('inventory-form').addEventListener('submit', function(e) {
         var names = document.querySelectorAll('.item-name');
         var hasItems = false;
-        names.forEach(function(input) { if (input.value.trim() !== '') hasItems = true; });
-        if (!hasItems) { e.preventDefault(); alert('Добавьте хотя бы одну вещь!'); return false; }
+        names.forEach(function(input) {
+            if (input.value.trim() !== '') hasItems = true;
+        });
+        if (!hasItems) {
+            e.preventDefault();
+            alert('Добавьте хотя бы одну вещь!');
+            return false;
+        }
+        reindexItems();
+        console.log('Форма отправлена. Количество вещей: ' + names.length);
         return true;
     });
 </script>
