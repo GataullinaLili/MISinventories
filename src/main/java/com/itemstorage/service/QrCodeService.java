@@ -10,11 +10,16 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class QrCodeService {
 
     private static final Logger log = LoggerFactory.getLogger(QrCodeService.class);
+
+    private static final int QR_CODE_WIDTH = 200;
+    private static final int QR_CODE_HEIGHT = 200;
 
     public String generateQrCodeBase64(String data) {
         try {
@@ -28,7 +33,7 @@ public class QrCodeService {
             log.debug("Генерация QR-кода для данных: {} -> номер описи: {}", data, cleanData);
 
             QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix matrix = writer.encode(cleanData, BarcodeFormat.QR_CODE, 200, 200);
+            BitMatrix matrix = writer.encode(cleanData, BarcodeFormat.QR_CODE, QR_CODE_WIDTH, QR_CODE_HEIGHT);
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix, "PNG", baos);
@@ -52,15 +57,29 @@ public class QrCodeService {
             return cleaned;
         }
 
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(?:INV-)?(\\d+)(?:-|\\s|$)");
-        java.util.regex.Matcher matcher = pattern.matcher(cleaned);
+        if (cleaned.toLowerCase().contains("http") || cleaned.toLowerCase().contains("localhost") || cleaned.toLowerCase().contains("www")) {
+            Pattern urlPattern = Pattern.compile("/(\\d+)(?:/|$|\\?|#)");
+            Matcher urlMatcher = urlPattern.matcher(cleaned);
+            if (urlMatcher.find()) {
+                return urlMatcher.group(1);
+            }
+            // Пробуем найти любую последовательность цифр в URL
+            Pattern anyInUrl = Pattern.compile("\\d+");
+            Matcher anyMatcher = anyInUrl.matcher(cleaned);
+            if (anyMatcher.find()) {
+                return anyMatcher.group();
+            }
+            return "";
+        }
 
+        Pattern pattern = Pattern.compile("(?:INV-|inv-|№)?(\\d+)");
+        Matcher matcher = pattern.matcher(cleaned);
         if (matcher.find()) {
             return matcher.group(1);
         }
 
-        java.util.regex.Pattern firstNumberPattern = java.util.regex.Pattern.compile("\\d+");
-        java.util.regex.Matcher firstMatcher = firstNumberPattern.matcher(cleaned);
+        Pattern firstNumberPattern = Pattern.compile("\\d+");
+        Matcher firstMatcher = firstNumberPattern.matcher(cleaned);
         if (firstMatcher.find()) {
             return firstMatcher.group();
         }
